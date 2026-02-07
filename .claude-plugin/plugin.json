@@ -1,0 +1,13 @@
+{
+  "name": "my-claude-hud",
+  "description": "My custom Claude Code HUD - real-time statusline with context, tools, agents, todos",
+  "version": "1.0.0",
+  "author": {
+    "name": "Your Name",
+    "url": "https://github.com/yourusername"
+  },
+  "homepage": "https://github.com/yourusername/my-claude-hud",
+  "repository": "https://github.com/yourusername/my-claude-hud",
+  "license": "MIT",
+  "keywords": ["hud", "statusline", "context", "tools", "agents", "todos"]
+}

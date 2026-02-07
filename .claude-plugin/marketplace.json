@@ -1,0 +1,20 @@
+{
+  "name": "my-claude-hud",
+  "owner": {
+    "name": "Your Name",
+    "email": "your.email@example.com"
+  },
+  "metadata": {
+    "description": "My custom Claude Code HUD - 实时显示上下文使用、工具状态、Agent 和 Todo 进度",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "my-claude-hud",
+      "source": "./",
+      "description": "Real-time statusline showing context usage, active tools, running agents, and todo progress. Always visible below your input, zero config required.",
+      "category": "monitoring",
+      "tags": ["hud", "statusline", "monitoring", "context", "tools", "agents", "todos", "chinese"]
+    }
+  ]
+}
