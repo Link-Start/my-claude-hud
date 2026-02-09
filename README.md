@@ -215,4 +215,8 @@ npm run dev  # Watch mode
 
 ## License
 
-MIT
+MIT License - Copyright (c) 2026 Link-Start
+
+This project is inspired by and reimplements functionality similar to [claude-hud](https://github.com/jarrodwatts/claude-hud) by Jarrod Watts (MIT License). All code is written from scratch to achieve equivalent functionality with additional enhancements.
+
+See [LICENSE](./LICENSE) for details.
