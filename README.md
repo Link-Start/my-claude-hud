@@ -1,71 +1,73 @@
 # My Claude HUD
 
-> Real-time statusline HUD for Claude Code - showing context usage, active tools, running agents, todo progress, and more.
+> Claude Code 实时状态栏 HUD - 显示上下文使用量、活跃工具、运行中的 Agent、待办进度等。
+
+[**English**](./README.en.md) | 中文
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/badge/Gateway-Link--Start-blue)](https://github.com/Link-Start)
 
 ---
 
-## 🙏 Acknowledgments
+## 🙏 致谢
 
-This project is inspired by and reimplements functionality similar to **[claude-hud](https://github.com/jarrodwatts/claude-hud)** by **[Jarrod Watts](https://github.com/jarrodwatts)**.
+本项目灵感来源于 **[Jarrod Watts](https://github.com/jarrodwatts)** 的 **[claude-hud](https://github.com/jarrodwatts/claude-hud)** 项目。
 
-> **Thank you, Jarrod Watts**, for creating the original claude-hud and sharing it with the community! Your work provided the foundation and inspiration for this enhanced version.
+> **感谢 Jarrod Watts** 创建了原始的 claude-hud 并与社区分享！你的工作为这个增强版本提供了基础和灵感。
 
-While the original project serves as the conceptual reference, **all code in this repository is written from scratch** to achieve equivalent functionality with additional enhancements:
+虽然原始项目作为概念参考，但**本仓库的所有代码均从零编写**，以实现等效功能并添加以下增强：
 
-- 🇨🇳 **Chinese language support** (default)
-- 🧠 **Project memory system** (cross-session behavior tracking)
-- 🔍 **Semantic tool statistics** (reading/editing/executing/inspecting/communicating)
-- 📂 **Directory-level tool aggregation**
-- 🎯 **Smart content display** (dynamic based on session state)
-- 🐤 **Canary testing** (AI context state monitoring)
-- 🎨 **5 color themes** (default, nord, dracula, monokai, solarized)
-- 📊 **Session statistics and cost estimation**
+- 🇨🇳 **中文语言支持**（默认）
+- 🧠 **项目记忆系统**（跨会话行为追踪）
+- 🔍 **语义化工具统计**（读取/编辑/执行/检查/通信）
+- 📂 **目录级工具聚合**
+- 🎯 **智能内容展示**（基于会话状态动态调整）
+- 🐤 **金丝雀测试**（AI 上下文状态监控）
+- 🎨 **5 种颜色主题**（default, nord, dracula, monokai, solarized）
+- 📊 **会话统计和成本估算**
 
-Both projects are released under the **MIT License**.
-
----
-
-## Features
-
-### Core Features
-- 📊 **Context Usage** - Real-time token usage display with color-coded progress bar
-- 🔧 **Active Tools** - Shows currently running and completed tools
-- 🤖 **Agent Tracking** - Monitor running agents and their status
-- ✅ **Todo Progress** - Display todo completion status
-- 🌿 **Git Status** - Branch, dirty state, ahead/behind, and file stats
-- ⏱️ **Session Duration** - Track how long you've been working
-- 📈 **API Usage** - 5-hour and 7-day usage windows with reset times
-- 🎯 **Config Counts** - Display CLAUDE.md, rules, MCPs, and hooks counts
-- ⚡ **Speed Tracking** - Output token speed (tokens/second)
-
-### Enhanced Features
-- 🧠 **Project Memory** - Cross-session project behavior tracking (hot files, active directories, session stats)
-- 🔍 **Semantic Tool Stats** - Group tools by category (reading/editing/executing/inspecting/communicating)
-- 📂 **Directory Aggregation** - View tool usage aggregated by directory
-- 🎯 **Smart Display** - Content adjusts based on session state (normal/busy/warning/critical)
-- 🐤 **Canary Testing** - Monitor AI context state with automatic detection
-- 💰 **Cost Estimation** - Calculate API costs based on token usage
-- ⏱️ **Tool Execution Time** - Display duration for each tool
-- 🔔 **Alert System** - Warnings for context and API limits
-- 📊 **Context Projection** - Predict remaining messages/time
-- 🎨 **Color Themes** - 5 built-in themes
-- 📁 **Project-Specific Config** - Override global settings per project
-- 📈 **Session Statistics** - Track usage across sessions
-- 🔧 **Quick Actions** - Command-line tools for common operations
-- 🗂️ **Smart Tool Grouping** - Group similar tools for cleaner display
-- 🌐 **Multi-Language Support** - Chinese/English display language (default: Chinese)
-- 🌍 **Custom Translations** - Create your own translation file for any language
+两个项目均采用 **MIT 许可证**发布。
 
 ---
 
-## Installation
+## 功能特性
 
-Choose your preferred installation method:
+### 核心功能
+- 📊 **上下文使用量** - 实时 Token 使用量显示，带颜色编码进度条
+- 🔧 **活跃工具** - 显示当前运行和已完成的工具
+- 🤖 **Agent 追踪** - 监控运行中的 Agent 及其状态
+- ✅ **待办进度** - 显示待办事项完成状态
+- 🌿 **Git 状态** - 分支、未提交状态、领先/落后、文件统计
+- ⏱️ **会话时长** - 追踪已工作时长
+- 📈 **API 使用量** - 5 小时和 7 天使用量窗口及重置时间
+- 🎯 **配置统计** - 显示 CLAUDE.md、rules、MCPs 和 hooks 数量
+- ⚡ **速度追踪** - 输出 Token 速度（tokens/秒）
 
-### Method 1: Clone from GitHub (Recommended)
+### 增强功能
+- 🧠 **项目记忆** - 跨会话项目行为追踪（热门文件、活跃目录、会话统计）
+- 🔍 **语义化工具统计** - 按类别分组工具（读取/编辑/执行/检查/通信）
+- 📂 **目录聚合** - 按目录聚合查看工具使用情况
+- 🎯 **智能显示** - 内容根据会话状态调整（正常/忙碌/警告/严重）
+- 🐤 **金丝雀测试** - 自动检测 AI 上下文状态
+- 💰 **成本估算** - 根据 Token 使用量计算 API 成本
+- ⏱️ **工具执行时间** - 显示每个工具的执行时长
+- 🔔 **告警系统** - 上下文和 API 限制警告
+- 📊 **上下文预测** - 预测剩余消息/时间
+- 🎨 **颜色主题** - 5 种内置主题
+- 📁 **项目特定配置** - 每个项目可覆盖全局设置
+- 📈 **会话统计** - 跨会话使用量追踪
+- 🔧 **快捷操作** - 常用操作的命令行工具
+- 🗂️ **智能工具分组** - 相似工具分组显示更清晰
+- 🌐 **多语言支持** - 中文/英文显示语言（默认：中文）
+- 🌍 **自定义翻译** - 可创建任何语言的翻译文件
+
+---
+
+## 安装
+
+选择你喜欢的安装方式：
+
+### 方式 1: 从 GitHub 克隆（推荐）
 
 ```bash
 cd ~/.claude/plugins
@@ -75,10 +77,10 @@ npm install
 npm run build
 ```
 
-### Method 2: Download Release
+### 方式 2: 下载发布包
 
 ```bash
-# Download and extract the latest release
+# 下载并解压最新发布版本
 cd ~/.claude/plugins
 curl -LO https://github.com/Link-Start/my-claude-hud/releases/latest/download/my-claude-hud.tar.gz
 tar -xzf my-claude-hud.tar.gz
@@ -87,14 +89,14 @@ cd my-claude-hud
 npm install
 ```
 
-### Method 3: Manual Download
+### 方式 3: 手动下载
 
-1. Visit [Releases](https://github.com/Link-Start/my-claude-hud/releases)
-2. Download the latest `my-claude-hud.tar.gz`
-3. Extract to `~/.claude/plugins/my-claude-hud/`
-4. Run `npm install` in the plugin directory
+1. 访问 [Releases](https://github.com/Link-Start/my-claude-hud/releases)
+2. 下载最新的 `my-claude-hud.tar.gz`
+3. 解压到 `~/.claude/plugins/my-claude-hud/`
+4. 在插件目录运行 `npm install`
 
-### Method 4: Install Script (macOS/Linux)
+### 方式 4: 一键安装脚本（macOS/Linux）
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/Link-Start/my-claude-hud/master/scripts/install.sh | bash
@@ -102,9 +104,9 @@ curl -sSL https://raw.githubusercontent.com/Link-Start/my-claude-hud/master/scri
 
 ---
 
-## Configuration
+## 配置
 
-Add to `~/.claude/settings.json`:
+在 `~/.claude/settings.json` 中添加：
 
 ```json
 {
@@ -115,9 +117,9 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
-### Configuration Options
+### 配置选项
 
-Create `~/.claude/plugins/my-claude-hud/config.json`:
+创建 `~/.claude/plugins/my-claude-hud/config.json`：
 
 ```json
 {
@@ -172,9 +174,9 @@ Create `~/.claude/plugins/my-claude-hud/config.json`:
 }
 ```
 
-### Project-Specific Configuration
+### 项目特定配置
 
-Create `.claude-hud.json` in your project root to override global settings:
+在项目根目录创建 `.claude-hud.json` 以覆盖全局设置：
 
 ```json
 {
@@ -188,16 +190,16 @@ Create `.claude-hud.json` in your project root to override global settings:
 }
 ```
 
-### Custom Translations
+### 自定义翻译
 
-You can create your own translation file to customize or translate the HUD to any language.
+你可以创建自己的翻译文件来定制或翻译 HUD。
 
-1. Copy the example translation file:
+1. 复制示例翻译文件：
 ```bash
 cp ~/.claude/plugins/my-claude-hud/examples/config.translations.example.json ~/.claude/plugins/my-claude-hud/config.translations.json
 ```
 
-2. Edit the translation file with your custom translations:
+2. 编辑翻译文件：
 
 ```json
 {
@@ -219,7 +221,7 @@ cp ~/.claude/plugins/my-claude-hud/examples/config.translations.example.json ~/.
 }
 ```
 
-3. Add the translation file path to your config:
+3. 在配置中添加翻译文件路径：
 
 ```json
 {
@@ -231,108 +233,108 @@ cp ~/.claude/plugins/my-claude-hud/examples/config.translations.example.json ~/.
 
 ---
 
-## Color Themes
+## 颜色主题
 
-Available themes:
-- `default` - Standard terminal colors
-- `nord` - Arctic blue-gray theme
-- `dracula` - High contrast dark theme
-- `monokai` - Classic dark theme
+可用主题：
+- `default` - 标准终端颜色
+- `nord` - 北极蓝灰主题
+- `dracula` - 高对比度暗色主题
+- `monokai` - 经典暗色主题
 - `solarized` - Solarized Dark
 
 ---
 
-## Quick Actions
+## 快捷操作
 
 ```bash
-# Toggle layout mode
+# 切换布局模式
 node ~/.claude/plugins/my-claude-hud/dist/index.js --action=toggle-layout
 
-# Show statistics
+# 显示统计信息
 node ~/.claude/plugins/my-claude-hud/dist/index.js --action=stats
 
-# Clear all caches
+# 清除所有缓存
 node ~/.claude/plugins/my-claude-hud/dist/index.js --action=clear-cache
 
-# Clear project memory
+# 清除项目记忆
 node ~/.claude/plugins/my-claude-hud/dist/index.js --action=clear-memory
 
-# Canary testing
+# 金丝雀测试
 node ~/.claude/plugins/my-claude-hud/dist/index.js --action=canary-create
 node ~/.claude/plugins/my-claude-hud/dist/index.js --action=canary-check
 
-# Show help
+# 显示帮助
 node ~/.claude/plugins/my-claude-hud/dist/index.js --action=help
 ```
 
 ---
 
-## Layout Modes
+## 布局模式
 
-### Expanded (default)
-Multi-line display with separate sections for session info, tools, agents, and todos.
+### Expanded（默认）
+多行显示，会话信息、工具、Agent 和待办事项分开展示。
 
 ### Compact
-Single-line display with all information in one line.
+单行显示，所有信息在一行中。
 
 ---
 
-## Development
+## 开发
 
 ```bash
 npm install
 npm run build
-npm run dev  # Watch mode
-npm test     # Run tests
+npm run dev  # 监听模式
+npm test     # 运行测试
 ```
 
 ---
 
-## Documentation
+## 文档
 
-- [Core Features](./docs/FEATURES.md) - List of implemented features
-- [Enhancements](./docs/ENHANCEMENTS.md) - Detailed enhancement documentation
-- [Implementation Plan](./docs/implementation-plan.md) - Development progress
-- [Custom Translations](./docs/TRANSLATIONS.md) - How to create custom translation files
-- [Canary Testing](./docs/CANARY_TEST.md) - AI context state monitoring guide
+- [核心功能](./docs/FEATURES.md) - 已实现功能列表
+- [增强功能](./docs/ENHANCEMENTS.md) - 详细增强功能文档
+- [实现计划](./docs/implementation-plan.md) - 开发进度
+- [自定义翻译](./docs/TRANSLATIONS.md) - 如何创建自定义翻译文件
+- [金丝雀测试](./docs/CANARY_TEST.md) - AI 上下文状态监控指南
 
 ---
 
-## Comparison with Original
+## 与原版对比
 
-| Feature | Original claude-hud | My Claude HUD |
+| 功能 | 原 claude-hud | My Claude HUD |
 |---------|-------------------|---------------|
-| Context Usage | ✅ | ✅ |
-| Active Tools | ✅ | ✅ |
-| Agent Tracking | ✅ | ✅ |
-| Todo Progress | ✅ | ✅ |
-| Git Status | ✅ | ✅ |
-| API Usage | ✅ | ✅ |
-| Chinese Language | ❌ | ✅ (Default) |
-| Project Memory | ❌ | ✅ |
-| Semantic Tool Stats | ❌ | ✅ |
-| Directory Aggregation | ❌ | ✅ |
-| Smart Display | ❌ | ✅ |
-| Canary Testing | ❌ | ✅ |
-| Color Themes | ✅ | ✅ (5 themes) |
-| Cost Estimation | ✅ | ✅ |
-| Session Statistics | ✅ | ✅ |
+| 上下文使用量 | ✅ | ✅ |
+| 活跃工具 | ✅ | ✅ |
+| Agent 追踪 | ✅ | ✅ |
+| 待办进度 | ✅ | ✅ |
+| Git 状态 | ✅ | ✅ |
+| API 使用量 | ✅ | ✅ |
+| 中文语言 | ❌ | ✅（默认） |
+| 项目记忆 | ❌ | ✅ |
+| 语义化工具统计 | ❌ | ✅ |
+| 目录聚合 | ❌ | ✅ |
+| 智能显示 | ❌ | ✅ |
+| 金丝雀测试 | ❌ | ✅ |
+| 颜色主题 | ✅ | ✅（5 种） |
+| 成本估算 | ✅ | ✅ |
+| 会话统计 | ✅ | ✅ |
 
 ---
 
-## License
+## 许可证
 
 MIT License - Copyright (c) 2026 Link-Start
 
-This project is inspired by and reimplements functionality similar to [claude-hud](https://github.com/jarrodwatts/claude-hud) by [Jarrod Watts](https://github.com/jarrodwatts) (MIT License). All code is written from scratch to achieve equivalent functionality with additional enhancements.
+本项目灵感来源于 [Jarrod Watts](https://github.com/jarrodwatts) 的 [claude-hud](https://github.com/jarrodwatts/claude-hud)（MIT License）。所有代码均从零编写，以实现等效功能并添加额外增强。
 
-See [LICENSE](./LICENSE) for details.
+详见 [LICENSE](./LICENSE)。
 
 ---
 
-## Links
+## 链接
 
 - **GitHub**: [https://github.com/Link-Start/my-claude-hud](https://github.com/Link-Start/my-claude-hud)
-- **Original Project**: [https://github.com/jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud)
-- **Author**: [Link-Start](https://github.com/Link-Start)
-- **Original Author**: [Jarrod Watts](https://github.com/jarrodwatts)
+- **原始项目**: [https://github.com/jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud)
+- **作者**: [Link-Start](https://github.com/Link-Start)
+- **原作者**: [Jarrod Watts](https://github.com/jarrodwatts)
