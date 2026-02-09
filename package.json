@@ -1,5 +1,5 @@
 {
-  "name": "my-claude-hud",
+  "name": "@link-start/my-claude-hud",
   "version": "1.0.0",
   "description": "Claude Code 实时状态栏 HUD - 显示上下文使用量、活跃工具、Agent、Todo 进度等",
   "main": "dist/index.js",
@@ -40,6 +40,9 @@
     "url": "https://github.com/Link-Start/my-claude-hud/issues"
   },
   "homepage": "https://github.com/Link-Start/my-claude-hud#readme",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
