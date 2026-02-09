@@ -4,7 +4,7 @@
 
 import * as fs from 'node:fs';
 import * as readline from 'node:readline';
-import type { SessionData, ToolStatus, AgentStatus, TodoItem } from './types.js';
+import type { TranscriptData, ToolEntry, AgentEntry, TodoItem } from './types.js';
 
 interface TranscriptEntry {
   timestamp?: string;
@@ -25,8 +25,8 @@ interface ContentBlock {
 /**
  * 解析会话记录文件并提取会话活动
  */
-export async function parseTranscript(filePath: string): Promise<SessionData> {
-  const result: SessionData = {
+export async function parseTranscript(filePath: string): Promise<TranscriptData> {
+  const result: TranscriptData = {
     tools: [],
     agents: [],
     todos: [],
@@ -36,8 +36,8 @@ export async function parseTranscript(filePath: string): Promise<SessionData> {
     return result;
   }
 
-  const toolMap = new Map<string, ToolStatus>();
-  const agentMap = new Map<string, AgentStatus>();
+  const toolMap = new Map<string, ToolEntry>();
+  const agentMap = new Map<string, AgentEntry>();
   const todoList: TodoItem[] = [];
   const todoIdMap = new Map<string, number>();
 
@@ -72,11 +72,11 @@ export async function parseTranscript(filePath: string): Promise<SessionData> {
 
 function processEntry(
   entry: TranscriptEntry,
-  toolMap: Map<string, ToolStatus>,
-  agentMap: Map<string, AgentStatus>,
+  toolMap: Map<string, ToolEntry>,
+  agentMap: Map<string, AgentEntry>,
   todoList: TodoItem[],
   todoIdMap: Map<string, number>,
-  result: SessionData
+  result: TranscriptData
 ): void {
   const timestamp = entry.timestamp ? new Date(entry.timestamp) : new Date();
 
@@ -104,8 +104,8 @@ function processEntry(
 function handleToolUse(
   block: ContentBlock,
   timestamp: Date,
-  toolMap: Map<string, ToolStatus>,
-  agentMap: Map<string, AgentStatus>,
+  toolMap: Map<string, ToolEntry>,
+  agentMap: Map<string, AgentEntry>,
   todoList: TodoItem[],
   todoIdMap: Map<string, number>
 ): void {
@@ -115,13 +115,13 @@ function handleToolUse(
   // 处理 Task 工具（Agent）
   if (toolName === 'Task') {
     const input = block.input as Record<string, unknown>;
-    const agent: AgentStatus = {
+    const agent: AgentEntry = {
       id: toolId,
       type: (input?.subagent_type as string) ?? 'unknown',
       model: (input?.model as string) ?? undefined,
       description: (input?.description as string) ?? undefined,
-      state: 'running',
-      startedAt: timestamp,
+      status: 'running',
+      startTime: timestamp,
     };
     agentMap.set(toolId, agent);
     return;
@@ -143,10 +143,10 @@ function handleToolUse(
     const input = block.input as Record<string, unknown>;
     const subject = typeof input?.subject === 'string' ? input.subject : '';
     const description = typeof input?.description === 'string' ? input.description : '';
-    const text = subject || description || '未命名任务';
+    const content = subject || description || '未命名任务';
     const status = parseTodoStatus(input?.status);
 
-    todoList.push({ text, status: status ?? 'pending' });
+    todoList.push({ content, status: status ?? 'pending' });
 
     const taskId = String(input?.taskId ?? toolId);
     todoIdMap.set(taskId, todoList.length - 1);
@@ -166,21 +166,21 @@ function handleToolUse(
 
       const subject = typeof input?.subject === 'string' ? input.subject : '';
       const description = typeof input?.description === 'string' ? input.description : '';
-      const text = subject || description;
-      if (text) {
-        todoList[index].text = text;
+      const content = subject || description;
+      if (content) {
+        todoList[index].content = content;
       }
     }
     return;
   }
 
   // 普通工具 - 创建状态条目
-  const tool: ToolStatus = {
+  const tool: ToolEntry = {
     id: toolId,
     name: toolName,
     target: extractTarget(toolName, block.input),
-    state: 'running',
-    startedAt: timestamp,
+    status: 'running',
+    startTime: timestamp,
   };
   toolMap.set(toolId, tool);
 }
@@ -188,8 +188,8 @@ function handleToolUse(
 function handleToolResult(
   block: ContentBlock,
   timestamp: Date,
-  toolMap: Map<string, ToolStatus>,
-  agentMap: Map<string, AgentStatus>
+  toolMap: Map<string, ToolEntry>,
+  agentMap: Map<string, AgentEntry>
 ): void {
   const toolId = block.tool_use_id!;
   const isError = block.is_error ?? false;
@@ -197,15 +197,17 @@ function handleToolResult(
   // 更新工具状态
   const tool = toolMap.get(toolId);
   if (tool) {
-    tool.state = isError ? 'failed' : 'completed';
-    tool.finishedAt = timestamp;
+    tool.status = isError ? 'error' : 'completed';
+    tool.endTime = timestamp;
+    // 计算执行时长（毫秒）
+    tool.duration = timestamp.getTime() - tool.startTime.getTime();
   }
 
   // 更新 Agent 状态
   const agent = agentMap.get(toolId);
   if (agent) {
-    agent.state = 'completed';
-    agent.finishedAt = timestamp;
+    agent.status = 'completed';
+    agent.endTime = timestamp;
   }
 }
 
@@ -269,7 +271,7 @@ function parseTodoStatus(status: unknown): TodoItem['status'] | null {
     case 'completed':
     case 'done':
     case 'complete':
-      return 'done';
+      return 'completed';
     default:
       return null;
   }

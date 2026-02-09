@@ -47,17 +47,43 @@ export function getTotalInputTokens(data: StdinInput): number {
 }
 
 /**
- * 获取上下文使用百分比
- * 优先使用原生百分比（Claude Code 2.1.6+）
+ * 计算总 token 数（输入 + 输出）
  */
-export function getContextUsagePercent(data: StdinInput): number {
-  // 优先使用原生百分比
+export function getTotalTokens(data: StdinInput): number {
+  const usage = data.context_window?.current_usage;
+  if (!usage) return 0;
+
+  return (
+    (usage.input_tokens ?? 0) +
+    (usage.output_tokens ?? 0) +
+    (usage.cache_creation_input_tokens ?? 0) +
+    (usage.cache_read_input_tokens ?? 0)
+  );
+}
+
+/**
+ * 获取原生百分比（Claude Code 2.1.6+）
+ * 返回 null 如果不可用
+ */
+function getNativePercent(data: StdinInput): number | null {
   const native = data.context_window?.used_percentage;
   if (typeof native === 'number' && !Number.isNaN(native)) {
     return Math.min(100, Math.max(0, Math.round(native)));
   }
+  return null;
+}
 
-  // 回退到手动计算
+/**
+ * 获取上下文使用百分比
+ * 优先使用原生百分比（Claude Code 2.1.6+）
+ */
+export function getContextUsagePercent(data: StdinInput): number {
+  const native = getNativePercent(data);
+  if (native !== null) {
+    return native;
+  }
+
+  // 回退到手动计算（无缓冲）
   const windowSize = data.context_window?.context_window_size;
   if (!windowSize || windowSize <= 0) {
     return 0;
@@ -65,6 +91,29 @@ export function getContextUsagePercent(data: StdinInput): number {
 
   const totalTokens = getTotalInputTokens(data);
   return Math.min(100, Math.round((totalTokens / windowSize) * 100));
+}
+
+/**
+ * 获取带缓冲的上下文使用百分比
+ * 用于模拟自动压缩缓冲区的行为
+ * 缓冲值 22.5% 是基于社区观察得出的经验值
+ */
+export function getBufferedPercent(data: StdinInput): number {
+  // 优先使用原生百分比（已包含正确的上下文计算）
+  const native = getNativePercent(data);
+  if (native !== null) {
+    return native;
+  }
+
+  // 回退到手动计算（带缓冲）
+  const windowSize = data.context_window?.context_window_size;
+  if (!windowSize || windowSize <= 0) {
+    return 0;
+  }
+
+  const totalTokens = getTotalInputTokens(data);
+  const buffer = windowSize * 0.225; // 22.5% 缓冲
+  return Math.min(100, Math.round(((totalTokens + buffer) / windowSize) * 100));
 }
 
 /**

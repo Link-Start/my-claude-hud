@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "My Claude HUD 翻译文件",
+  "description": "自定义 My Claude HUD 插件显示的翻译内容",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "翻译文件版本，用于未来兼容性检查",
+      "default": "1.0.0"
+    },
+    "tools": {
+      "type": "object",
+      "description": "工具名称翻译（工具名 -> 译文）",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "examples": {
+        "Read": "读取",
+        "Write": "写入",
+        "Edit": "编辑",
+        "Bash": "终端"
+      }
+    },
+    "agentTypes": {
+      "type": "object",
+      "description": "Agent 类型翻译（类型名 -> 译文）",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "examples": {
+        "general-purpose": "通用助手",
+        "explore": "探索助手",
+        "plan": "规划助手"
+      }
+    },
+    "status": {
+      "type": "object",
+      "description": "状态文本翻译（英文 -> 译文）",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "examples": {
+        "All todos complete": "所有任务已完成",
+        "API limit reached": "API 已达限额"
+      }
+    },
+    "toolGroups": {
+      "type": "object",
+      "description": "工具分组翻译（分组名 -> 译文）",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "examples": {
+        "File ops": "文件操作",
+        "Search": "搜索功能",
+        "Shell": "终端命令"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": "1.0.0",
+      "tools": {
+        "Read": "读取",
+        "Write": "写入"
+      },
+      "agentTypes": {
+        "general-purpose": "通用助手"
+      }
+    }
+  ]
+}

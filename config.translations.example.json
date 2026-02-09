@@ -1,0 +1,49 @@
+{
+  "$schema": "./translation-schema.json",
+  "version": "1.0.0",
+  "_comment": "My Claude HUD 自定义翻译文件示例",
+  "_note": "你只需要覆盖想要修改的翻译项，其他项目将使用默认值",
+
+  "tools": {
+    "_comment": "工具名称翻译",
+    "Read": "读取",
+    "Write": "写入",
+    "Edit": "编辑",
+    "Bash": "终端",
+    "Grep": "搜索",
+    "WebFetch": "网页",
+    "WebSearch": "搜索",
+    "Task": "代理任务"
+  },
+
+  "agentTypes": {
+    "_comment": "Agent 类型翻译",
+    "general-purpose": "通用助手",
+    "explore": "探索助手",
+    "plan": "规划助手",
+    "bash": "命令助手"
+  },
+
+  "status": {
+    "_comment": "状态文本翻译",
+    "All todos complete": "所有任务已完成",
+    "Context at": "上下文使用",
+    "API limit reached": "API 已达限额",
+    "API limit approaching": "API 即将达到限额",
+    "session": "本次会话",
+    "today": "今天",
+    "messages remaining": "剩余消息数",
+    "remaining": "剩余",
+    "tokens": "令牌"
+  },
+
+  "toolGroups": {
+    "_comment": "工具分组翻译",
+    "File ops": "文件操作",
+    "Search": "搜索功能",
+    "Shell": "终端命令",
+    "Git": "版本控制",
+    "Web": "网络请求",
+    "Other": "其他"
+  }
+}

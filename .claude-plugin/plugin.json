@@ -9,5 +9,10 @@
   "homepage": "https://github.com/yourusername/my-claude-hud",
   "repository": "https://github.com/yourusername/my-claude-hud",
   "license": "MIT",
-  "keywords": ["hud", "statusline", "context", "tools", "agents", "todos"]
+  "keywords": ["hud", "statusline", "context", "tools", "agents", "todos"],
+  "commands": {
+    "statusLine": {
+      "command": "node ~/.claude/plugins/my-claude-hud/dist/index.js"
+    }
+  }
 }

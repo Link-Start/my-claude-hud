@@ -1,0 +1,19 @@
+{
+  "lineLayout": "compact",
+  "showSeparators": true,
+  "theme": {
+    "colorTheme": "nord",
+    "customColors": {
+      "contextCritical": "#bf616a"
+    }
+  },
+  "alerts": {
+    "enabled": true,
+    "contextWarning": 75,
+    "contextCritical": 90
+  },
+  "display": {
+    "showCost": true,
+    "showSpeed": true
+  }
+}

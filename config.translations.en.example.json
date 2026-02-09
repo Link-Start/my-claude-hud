@@ -1,0 +1,45 @@
+{
+  "$schema": "./translation-schema.json",
+  "version": "1.0.0",
+  "_comment": "English translation example - shows identity mapping (no translation needed for English)",
+
+  "tools": {
+    "Read": "Read",
+    "Write": "Write",
+    "Edit": "Edit",
+    "Bash": "Shell",
+    "Grep": "Search",
+    "WebFetch": "Fetch",
+    "WebSearch": "Search",
+    "Task": "Agent"
+  },
+
+  "agentTypes": {
+    "general-purpose": "General",
+    "explore": "Explorer",
+    "plan": "Planner",
+    "bash": "Runner",
+    "claude-code-guide": "Guide"
+  },
+
+  "status": {
+    "All todos complete": "All tasks complete",
+    "Context at": "Context",
+    "API limit reached": "API limit reached",
+    "API limit approaching": "API limit approaching",
+    "session": "session",
+    "today": "today",
+    "messages remaining": "messages remaining",
+    "remaining": "remaining",
+    "tokens": "tokens"
+  },
+
+  "toolGroups": {
+    "File ops": "Files",
+    "Search": "Search",
+    "Shell": "Shell",
+    "Git": "Git",
+    "Web": "Web",
+    "Other": "Other"
+  }
+}

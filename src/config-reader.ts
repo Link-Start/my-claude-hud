@@ -1,5 +1,6 @@
 /**
  * 配置文件统计 - CLAUDE.md、rules、MCP、hooks 数量
+ * 支持 disabled MCP servers 过滤
  */
 
 import * as fs from 'node:fs';
@@ -11,6 +12,34 @@ export interface ConfigCounts {
   rulesCount: number;
   mcpCount: number;
   hooksCount: number;
+}
+
+type DisabledMcpKey = 'disabledMcpServers' | 'disabledMcpjsonServers';
+
+/**
+ * 从配置文件中获取禁用的 MCP 服务器名称
+ */
+function getDisabledMcpServers(filePath: string, key: DisabledMcpKey): Set<string> {
+  const disabled = new Set<string>();
+
+  if (!fs.existsSync(filePath)) return disabled;
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const config = JSON.parse(content);
+
+    if (config[key] && Array.isArray(config[key])) {
+      for (const item of config[key]) {
+        if (typeof item === 'string') {
+          disabled.add(item);
+        }
+      }
+    }
+  } catch {
+    // 忽略错误
+  }
+
+  return disabled;
 }
 
 /**
@@ -107,6 +136,12 @@ export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
     userMcpServers.add(name);
   }
 
+  // 过滤用户级禁用的 MCP 服务器
+  const disabledUserMcps = getDisabledMcpServers(userClaudeJson, 'disabledMcpServers');
+  for (const name of disabledUserMcps) {
+    userMcpServers.delete(name);
+  }
+
   // === 项目级别配置 ===
 
   if (cwd) {
@@ -133,8 +168,21 @@ export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
     // {cwd}/.claude/rules/*.md
     rulesCount += countRulesInDir(path.join(cwd, '.claude', 'rules'));
 
-    // {cwd}/.mcp.json
+    // {cwd}/.mcp.json (需要先处理禁用列表)
+    const mcpJsonServers = new Set<string>();
     for (const name of getMcpServerNames(path.join(cwd, '.mcp.json'))) {
+      mcpJsonServers.add(name);
+    }
+
+    // {cwd}/.claude/settings.local.json (包含禁用的 .mcp.json 服务器)
+    const localSettings = path.join(cwd, '.claude', 'settings.local.json');
+    const disabledMcpJsonServers = getDisabledMcpServers(localSettings, 'disabledMcpjsonServers');
+    for (const name of disabledMcpJsonServers) {
+      mcpJsonServers.delete(name);
+    }
+
+    // 将剩余的 .mcp.json 服务器添加到项目集
+    for (const name of mcpJsonServers) {
       projectMcpServers.add(name);
     }
 
@@ -145,11 +193,7 @@ export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
     }
     hooksCount += getHooksCount(projectSettings);
 
-    // {cwd}/.claude/settings.local.json
-    const localSettings = path.join(cwd, '.claude', 'settings.local.json');
-    for (const name of getMcpServerNames(localSettings)) {
-      projectMcpServers.add(name);
-    }
+    // {cwd}/.claude/settings.local.json (hooks)
     hooksCount += getHooksCount(localSettings);
   }
 
