@@ -5,7 +5,9 @@
 [**English**](./README.en.md) | 中文
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub](https://img.shields.io/badge/Gateway-Link--Start-blue)](https://github.com/Link-Start)
+[![GitHub stars](https://img.star-history.com/svg?repos=Link-Start/my-claude-hud&type=Date)](https://star-history.com/#Link-Start/my-claude-hud&Date)
+[![Release](https://img.shields.io/github/v/release/Link-Start/my-claude-hud)](https://github.com/Link-Start/my-claude-hud/releases)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-Plugin-blue)](https://github.com/anthropics/claude-code)
 
 ---
 
