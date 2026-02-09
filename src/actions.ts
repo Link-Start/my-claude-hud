@@ -10,6 +10,13 @@ import type { HudConfig } from './types.js';
 import { loadConfig, getConfigPath } from './config.js';
 import { getStatsSummary, clearSessionStats } from './session-stats.js';
 import { clearGitCache, getGitCacheStats } from './git.js';
+import {
+  createCanaryFile,
+  clearCanaryFile,
+  checkCanaryStatus,
+  initGlobalCanary
+} from './canary-test.js';
+import { clearProjectMemory, getMemoryCacheStats } from './project-memory.js';
 
 // 缓存文件路径
 const CACHE_DIR = path.join(os.homedir(), '.claude', 'plugins', 'my-claude-hud');
@@ -17,6 +24,7 @@ const SPEED_CACHE_FILE = path.join(CACHE_DIR, '.speed-cache.json');
 const USAGE_CACHE_FILE = path.join(CACHE_DIR, '.usage-cache.json');
 const COST_CACHE_FILE = path.join(CACHE_DIR, '.cost-cache.json');
 const GIT_CACHE_FILE = path.join(CACHE_DIR, '.git-cache.json');
+const MEMORY_CACHE_FILE = path.join(CACHE_DIR, '.project-memory.json');
 
 /**
  * 快捷操作定义
@@ -92,6 +100,7 @@ function showStats(): void {
       { name: '使用量缓存', path: USAGE_CACHE_FILE },
       { name: '成本缓存', path: COST_CACHE_FILE },
       { name: 'Git 缓存', path: GIT_CACHE_FILE },
+      { name: '项目记忆缓存', path: MEMORY_CACHE_FILE },
     ];
 
     for (const cache of caches) {
@@ -121,6 +130,22 @@ function showStats(): void {
       }
     }
 
+    // 显示项目记忆统计
+    const memoryStats = getMemoryCacheStats();
+    if (memoryStats && memoryStats.count > 0) {
+      console.log(`\n🧠 项目记忆: ${memoryStats.count} 个项目`);
+      if (memoryStats.projects.length > 0) {
+        const maxDisplay = 5;
+        const displayProjects = memoryStats.projects.slice(0, maxDisplay);
+        for (const project of displayProjects) {
+          console.log(`  - ${project.path} (${project.sessions} 次会话)`);
+        }
+        if (memoryStats.projects.length > maxDisplay) {
+          console.log(`  ... 还有 ${memoryStats.projects.length - maxDisplay} 个项目`);
+        }
+      }
+    }
+
     console.log('');
   } catch (error) {
     console.error(`✗ 获取统计信息失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -146,12 +171,16 @@ function clearCache(): void {
     clearGitCache();
     cleared++;
 
+    // 清除项目记忆缓存
+    clearProjectMemory();
+    cleared++;
+
     // 清除历史统计
     clearSessionStats();
     cleared++;
 
     if (cleared > 0) {
-      console.log(`✓ 已清除 ${cleared} 个缓存文件（包括 Git 缓存和历史统计）`);
+      console.log(`✓ 已清除 ${cleared} 个缓存文件（包括 Git 缓存、项目记忆和历史统计）`);
     } else {
       console.log('ℹ 没有找到需要清除的缓存文件');
     }
@@ -170,15 +199,23 @@ function showHelp(): void {
 用法: node dist/index.js --action=<操作>
 
 可用操作:
-  toggle-layout    切换布局模式（compact ↔ expanded）
-  stats            显示统计信息
-  clear-cache      清除所有缓存
-  help             显示此帮助信息
+  toggle-layout      切换布局模式（compact ↔ expanded）
+  stats              显示统计信息
+  clear-cache        清除所有缓存
+  clear-memory       清除项目记忆缓存
+  canary-create      在当前项目创建金丝雀文件
+  canary-clear       清除当前项目的金丝雀文件
+  canary-check       检查当前项目的金丝雀状态
+  canary-init-global 初始化全局金丝雀文件
+  help               显示此帮助信息
 
 示例:
   node dist/index.js --action=toggle-layout
   node dist/index.js --action=stats
   node dist/index.js --action=clear-cache
+  node dist/index.js --action=clear-memory
+  node dist/index.js --action=canary-create
+  node dist/index.js --action=canary-init-global
 `);
 }
 
@@ -201,10 +238,99 @@ const ACTIONS: Record<string, Action> = {
     description: '清除所有缓存',
     handler: clearCache,
   },
+  'clear-memory': {
+    name: '清除记忆',
+    description: '清除项目记忆缓存',
+    handler: () => {
+      try {
+        if (fs.existsSync(MEMORY_CACHE_FILE)) {
+          clearProjectMemory();
+          console.log('✓ 已清除项目记忆缓存');
+        } else {
+          console.log('ℹ 没有找到项目记忆缓存文件');
+        }
+      } catch (error) {
+        console.error(`✗ 清除项目记忆失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+  },
   help: {
     name: '帮助',
     description: '显示帮助信息',
     handler: showHelp,
+  },
+  'canary-create': {
+    name: '创建金丝雀',
+    description: '在当前项目创建金丝雀文件',
+    handler: async () => {
+      const cwd = process.cwd();
+      const success = createCanaryFile(cwd);
+      if (success) {
+        console.log('✓ 金丝雀文件已创建: .canary.md');
+        console.log('  金丝雀文件用于检测 AI 上下文丢失');
+      } else {
+        console.log('ℹ 金丝雀文件已存在或创建失败');
+      }
+    },
+  },
+  'canary-clear': {
+    name: '清除金丝雀',
+    description: '清除当前项目的金丝雀文件',
+    handler: async () => {
+      const cwd = process.cwd();
+      const success = clearCanaryFile(cwd);
+      if (success) {
+        console.log('✓ 金丝雀文件已清除');
+      } else {
+        console.log('ℹ 没有找到金丝雀文件');
+      }
+    },
+  },
+  'canary-check': {
+    name: '检查金丝雀',
+    description: '检查当前项目的金丝雀状态',
+    handler: async () => {
+      const cwd = process.cwd();
+      const canaryData = checkCanaryStatus(cwd);
+      console.log(`\n🐤 金丝雀测试状态\n`);
+      switch (canaryData.status) {
+        case 'active':
+          const sourceLabel = canaryData.source === 'global' ? ' (全局)' : ' (项目)';
+          console.log(`✓ 状态: 活跃${sourceLabel}`);
+          console.log(`  金丝雀 ID: ${canaryData.canaryId}`);
+          console.log(`  AI 仍然记得上下文`);
+          break;
+        case 'lost':
+          console.log(`⚠️ 状态: 丢失`);
+          console.log(`  金丝雀 ID: ${canaryData.canaryId}`);
+          console.log(`  AI 可能已经遗忘了上下文`);
+          break;
+        case 'prompt':
+          console.log(`💡 状态: 提示`);
+          console.log(`  建议创建金丝雀文件以监控上下文状态`);
+          console.log(`  运行 --action=canary-create 创建`);
+          break;
+        case 'none':
+          console.log(`ℹ 状态: 未创建`);
+          console.log(`  使用 --action=canary-create 创建项目金丝雀`);
+          console.log(`  使用 --action=canary-init-global 初始化全局金丝雀`);
+          break;
+      }
+      console.log('');
+    },
+  },
+  'canary-init-global': {
+    name: '初始化全局金丝雀',
+    description: '初始化全局金丝雀文件',
+    handler: async () => {
+      const success = initGlobalCanary();
+      if (success) {
+        console.log('✓ 全局金丝雀文件已创建: ~/.claude/canary.md');
+        console.log('  所有项目都可以使用这个全局金丝雀文件');
+      } else {
+        console.log('ℹ 全局金丝雀文件已存在');
+      }
+    },
   },
 };
 

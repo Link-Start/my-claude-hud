@@ -18,6 +18,15 @@ import { createDebug } from './debug.js';
 import { checkAndRunAction } from './actions.js';
 import { setColorTheme } from './render/colors.js';
 import { loadCustomTranslations } from './i18n.js';
+import { updateProjectMemory } from './project-memory.js';
+import {
+  checkCanaryStatus,
+  loadCanaryConfig,
+  shouldCheckCanary,
+  createCanaryFile,
+  clearCanaryFile,
+  initGlobalCanary
+} from './canary-test.js';
 import type { StdinInput, RenderContext } from './types.js';
 
 const debug = createDebug('index');
@@ -104,6 +113,17 @@ export async function main(): Promise<void> {
     // 统计配置文件
     const { claudeMdCount, rulesCount, mcpCount, hooksCount } = await countConfigs(stdin.cwd ?? '');
 
+    // 金丝雀测试检查
+    let canaryData = undefined;
+    const canaryConfig = loadCanaryConfig();
+    if (canaryConfig.enabled && stdin.cwd) {
+      // 检查是否应该执行金丝雀检查（基于计数器避免频繁检查）
+      if (shouldCheckCanary()) {
+        canaryData = checkCanaryStatus(stdin.cwd, transcript);
+        debug(`Canary status: ${canaryData.status}`);
+      }
+    }
+
     // 构建渲染上下文
     const ctx: RenderContext = {
       stdin,
@@ -117,7 +137,13 @@ export async function main(): Promise<void> {
       usageData,
       config,
       extraLabel,
+      canaryData,
     };
+
+    // 更新项目记忆（在渲染前更新，确保数据及时）
+    if (config.memory?.enabled !== false && config.memory?.trackingEnabled !== false) {
+      updateProjectMemory(ctx);
+    }
 
     // 渲染并输出
     render(ctx);

@@ -46,6 +46,16 @@ const tests = [
     expect: '已清除'
   },
   {
+    name: '快捷操作 - canary-create',
+    input: '--action=canary-create',
+    expect: '金丝雀文件'
+  },
+  {
+    name: '快捷操作 - canary-check',
+    input: '--action=canary-check',
+    expect: '金丝雀测试状态'
+  },
+  {
     name: '基本渲染 - 正常上下文',
     stdin: '{"cwd":"' + __dirname + '","transcript_path":"","context_window":{"context_window_size":200000,"current_usage":{"input_tokens":10000,"output_tokens":5000}},"model":{"id":"claude-opus-4-6","display_name":"Claude Opus 4.6"}}',
     expect: 'Claude Opus 4.6',
@@ -67,6 +77,27 @@ const tests = [
     name: '错误处理 - 空 stdin',
     stdin: '',
     expect: '初始化中'
+  },
+  {
+    name: '金丝雀测试 - 金丝雀状态显示',
+    stdin: '{"cwd":"' + __dirname + '","transcript_path":"","context_window":{"context_window_size":200000,"current_usage":{"input_tokens":10000,"output_tokens":5000}},"model":{"id":"claude-opus-4-6","display_name":"Claude Opus 4.6"}}',
+    expect: 'Canary',
+    stripAnsi: true,
+    before: function() {
+      // 确保在展开模式下进行测试
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const configPath = path.join(require('os').homedir(), '.claude', 'plugins', 'my-claude-hud', 'config.json');
+        if (fs.existsSync(configPath)) {
+          const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+          if (config.lineLayout !== 'expanded') {
+            config.lineLayout = 'expanded';
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+          }
+        }
+      } catch(e) {}
+    }
   }
 ];
 
@@ -81,6 +112,11 @@ for (const test of tests) {
   try {
     let cmd = `node ${HUD_DIST}`;
     let result = '';
+
+    // 执行前置操作
+    if (test.before) {
+      test.before();
+    }
 
     if (test.stdin !== undefined) {
       // 测试 stdin 输入

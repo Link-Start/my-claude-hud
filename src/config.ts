@@ -11,6 +11,8 @@ import type { DisplayLanguage } from './types.js';
 export type LineLayoutType = 'compact' | 'expanded';
 export type AutocompactBufferMode = 'enabled' | 'disabled';
 export type ContextValueMode = 'percent' | 'tokens';
+export type ToolDetailLevel = 'compact' | 'semantic' | 'directory';
+export type MemoryInsightsPosition = 'before' | 'after' | 'inline';
 
 export interface HudConfig {
   lineLayout: LineLayoutType;
@@ -41,6 +43,10 @@ export interface HudConfig {
     sevenDayThreshold: number;
     environmentThreshold: number;
     displayLanguage: DisplayLanguage;
+    toolDetailLevel: ToolDetailLevel;
+    showMemoryInsights: boolean;
+    memoryInsightsPosition: MemoryInsightsPosition;
+    smartDisplay: boolean;
   };
   alerts: {
     enabled: boolean;
@@ -54,6 +60,12 @@ export interface HudConfig {
   };
   i18n?: {
     customTranslationFile?: string;
+  };
+  memory?: {
+    enabled: boolean;
+    maxProjects: number;
+    maxFilesPerProject: number;
+    trackingEnabled: boolean;
   };
 }
 
@@ -87,6 +99,10 @@ export const DEFAULT_CONFIG: HudConfig = {
     sevenDayThreshold: 80,
     environmentThreshold: 0,
     displayLanguage: 'zh',
+    toolDetailLevel: 'compact',
+    showMemoryInsights: true,
+    memoryInsightsPosition: 'after',
+    smartDisplay: true,
   },
   alerts: {
     enabled: true,
@@ -99,6 +115,12 @@ export const DEFAULT_CONFIG: HudConfig = {
   },
   i18n: {
     customTranslationFile: undefined,
+  },
+  memory: {
+    enabled: true,
+    maxProjects: 100,
+    maxFilesPerProject: 500,
+    trackingEnabled: true,
   },
 };
 
@@ -147,6 +169,14 @@ function validateAutocompactBuffer(value: unknown): value is AutocompactBufferMo
 
 function validateContextValue(value: unknown): value is ContextValueMode {
   return value === 'percent' || value === 'tokens';
+}
+
+function validateToolDetailLevel(value: unknown): value is ToolDetailLevel {
+  return value === 'compact' || value === 'semantic' || value === 'directory';
+}
+
+function validateMemoryInsightsPosition(value: unknown): value is MemoryInsightsPosition {
+  return value === 'before' || value === 'after' || value === 'inline';
 }
 
 function validateThreshold(value: unknown, max = 100): number {
@@ -258,6 +288,18 @@ function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
     displayLanguage: (migrated.display?.displayLanguage === 'zh' || migrated.display?.displayLanguage === 'en')
       ? migrated.display.displayLanguage
       : DEFAULT_CONFIG.display.displayLanguage,
+    toolDetailLevel: validateToolDetailLevel(migrated.display?.toolDetailLevel)
+      ? migrated.display.toolDetailLevel
+      : DEFAULT_CONFIG.display.toolDetailLevel,
+    showMemoryInsights: typeof migrated.display?.showMemoryInsights === 'boolean'
+      ? migrated.display.showMemoryInsights
+      : DEFAULT_CONFIG.display.showMemoryInsights,
+    memoryInsightsPosition: validateMemoryInsightsPosition(migrated.display?.memoryInsightsPosition)
+      ? migrated.display.memoryInsightsPosition
+      : DEFAULT_CONFIG.display.memoryInsightsPosition,
+    smartDisplay: typeof migrated.display?.smartDisplay === 'boolean'
+      ? migrated.display.smartDisplay
+      : DEFAULT_CONFIG.display.smartDisplay,
   };
 
   const alerts = {
@@ -282,7 +324,22 @@ function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
       : DEFAULT_CONFIG.i18n?.customTranslationFile,
   };
 
-  return { lineLayout, showSeparators, pathLevels, gitStatus, display, alerts, theme, i18n };
+  const memory = {
+    enabled: typeof migrated.memory?.enabled === 'boolean'
+      ? migrated.memory.enabled
+      : DEFAULT_CONFIG.memory!.enabled,
+    maxProjects: typeof migrated.memory?.maxProjects === 'number'
+      ? migrated.memory.maxProjects
+      : DEFAULT_CONFIG.memory!.maxProjects,
+    maxFilesPerProject: typeof migrated.memory?.maxFilesPerProject === 'number'
+      ? migrated.memory.maxFilesPerProject
+      : DEFAULT_CONFIG.memory!.maxFilesPerProject,
+    trackingEnabled: typeof migrated.memory?.trackingEnabled === 'boolean'
+      ? migrated.memory.trackingEnabled
+      : DEFAULT_CONFIG.memory!.trackingEnabled,
+  };
+
+  return { lineLayout, showSeparators, pathLevels, gitStatus, display, alerts, theme, i18n, memory };
 }
 
 /**
@@ -309,6 +366,9 @@ export async function loadConfig(cwd?: string): Promise<HudConfig> {
   }
   if (projectConfig.alerts) {
     merged.alerts = { ...globalConfig.alerts, ...projectConfig.alerts };
+  }
+  if (projectConfig.memory) {
+    merged.memory = { ...globalConfig.memory, ...projectConfig.memory };
   }
 
   return mergeConfig(merged);

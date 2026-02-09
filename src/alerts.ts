@@ -3,9 +3,10 @@
  * 支持上下文、API 限制、长时间工具等告警
  */
 
-import type { RenderContext, UsageData } from './types.js';
+import type { RenderContext, UsageData, Anomaly } from './types.js';
 import { getContextUsagePercent } from './stdin.js';
 import { isLimitReached } from './types.js';
+import { checkAnomalies as detectAnomalies } from './session-state.js';
 
 /**
  * 告警配置
@@ -151,4 +152,42 @@ export function formatAlert(alert: Alert): string {
   const color = getAlertColor(alert.type);
   const reset = '\x1b[0m';
   return `${color}${alert.icon} ${alert.message}${reset}`;
+}
+
+/**
+ * 检测异常情况（使用 session-state 模块）
+ */
+export function checkAnomalies(ctx: RenderContext): Anomaly[] {
+  return detectAnomalies(ctx);
+}
+
+/**
+ * 格式化异常为显示字符串
+ */
+export function formatAnomalies(anomalies: Anomaly[]): string | null {
+  if (anomalies.length === 0) {
+    return null;
+  }
+
+  const parts: string[] = [];
+
+  for (const anomaly of anomalies) {
+    switch (anomaly.type) {
+      case 'consecutive_failures':
+        parts.push(`⚠️ ${anomaly.count} 个工具失败`);
+        break;
+      case 'timeout':
+        const mins = Math.round((anomaly.duration ?? 0) / 60000);
+        parts.push(`⏱️ ${anomaly.tool} 运行 ${mins} 分钟`);
+        break;
+      case 'context_spike':
+        parts.push(`📈 Context 异常增长`);
+        break;
+      case 'slow_output':
+        parts.push(`🐌 输出速度缓慢`);
+        break;
+    }
+  }
+
+  return parts.join(' | ');
 }

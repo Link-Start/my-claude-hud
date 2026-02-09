@@ -8,6 +8,9 @@ export type LineLayoutType = 'compact' | 'expanded';
 export type AutocompactBufferMode = 'enabled' | 'disabled';
 export type ContextValueMode = 'percent' | 'tokens';
 export type DisplayLanguage = 'zh' | 'en';
+export type ToolDetailLevel = 'compact' | 'semantic' | 'directory';
+export type MemoryInsightsPosition = 'before' | 'after' | 'inline';
+export type SessionLevel = 'normal' | 'busy' | 'warning' | 'critical';
 
 // 从 Claude Code 通过 stdin 接收的数据
 export interface StdinInput {
@@ -131,6 +134,13 @@ export interface HudConfig {
     sevenDayThreshold: number;
     environmentThreshold: number;
     displayLanguage: DisplayLanguage;
+    // 工具统计详细程度
+    toolDetailLevel?: ToolDetailLevel;
+    // 项目记忆显示
+    showMemoryInsights?: boolean;
+    memoryInsightsPosition?: MemoryInsightsPosition;
+    // 智能显示模式
+    smartDisplay?: boolean;
   };
   alerts: {
     enabled: boolean;
@@ -146,6 +156,21 @@ export interface HudConfig {
     // 自定义翻译文件路径（支持绝对路径或相对于 cwd 的路径）
     customTranslationFile?: string;
   };
+  canaryTest?: {
+    // 金丝雀测试配置
+    enabled?: boolean;
+    autoCreate?: boolean;
+    checkInterval?: number;
+    showInCompact?: boolean; // 是否在紧凑模式下显示
+    showInExpanded?: boolean; // 是否在展开模式下显示
+  };
+  memory?: {
+    // 记忆系统配置
+    enabled?: boolean;
+    maxProjects?: number;
+    maxFilesPerProject?: number;
+    trackingEnabled?: boolean;
+  };
 }
 
 // 配置文件统计
@@ -154,6 +179,40 @@ export interface ConfigCounts {
   rulesCount: number;
   mcpCount: number;
   hooksCount: number;
+}
+
+/**
+ * 金丝雀测试状态
+ */
+export type CanaryStatus = 'none' | 'prompt' | 'active' | 'lost';
+
+/**
+ * 金丝雀测试数据
+ */
+export interface CanaryData {
+  status: CanaryStatus;
+  timestamp?: Date;
+  canaryId?: string;
+  source?: 'project' | 'global'; // 金丝雀来源
+}
+
+/**
+ * 会话状态
+ */
+export interface SessionState {
+  level: SessionLevel;
+  triggers: string[];
+  recommendations: string[];
+}
+
+/**
+ * 异常检测
+ */
+export interface Anomaly {
+  type: 'consecutive_failures' | 'context_spike' | 'slow_output' | 'timeout';
+  count?: number;
+  tool?: string;
+  duration?: number;
 }
 
 // 翻译文件结构
@@ -178,4 +237,5 @@ export interface RenderContext {
   usageData: UsageData | null;
   config: HudConfig;
   extraLabel: string | null;
+  canaryData?: CanaryData; // 金丝雀测试数据
 }

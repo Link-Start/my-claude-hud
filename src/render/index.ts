@@ -8,6 +8,8 @@ import { renderSessionLine } from './session-line.js';
 import { renderToolsLine } from './tools-line.js';
 import { renderAgentsLine } from './agents-line.js';
 import { renderTodosLine } from './todos-line.js';
+import { renderCanaryLine } from './canary-line.js';
+import { renderMemoryLine } from './memory-line.js';
 import { dim, RESET } from './colors.js';
 
 /**
@@ -82,11 +84,17 @@ function truncateLine(line: string, maxWidth: number): string {
 }
 
 /**
- * 收集活动行（工具、Agent、Todo）
+ * 收集活动行（工具、Agent、Todo、金丝雀测试、项目记忆）
  */
 function collectActivityLines(ctx: RenderContext): string[] {
   const activityLines: string[] = [];
   const display = ctx.config?.display;
+
+  // 金丝雀测试行（放在最前面）
+  const canaryLine = renderCanaryLine(ctx);
+  if (canaryLine) {
+    activityLines.push(canaryLine);
+  }
 
   if (display?.showTools !== false) {
     const toolsLine = renderToolsLine(ctx);
@@ -106,6 +114,21 @@ function collectActivityLines(ctx: RenderContext): string[] {
     const todosLine = renderTodosLine(ctx);
     if (todosLine) {
       activityLines.push(todosLine);
+    }
+  }
+
+  // 项目记忆行
+  if (display?.showMemoryInsights !== false) {
+    const memoryLine = renderMemoryLine(ctx);
+    if (memoryLine) {
+      // 根据配置决定插入位置
+      const position = display?.memoryInsightsPosition ?? 'after';
+      if (position === 'before') {
+        activityLines.unshift(memoryLine);
+      } else if (position === 'after') {
+        activityLines.push(memoryLine);
+      }
+      // 'inline' 模式不做特殊处理，保持默认顺序
     }
   }
 
