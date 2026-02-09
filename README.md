@@ -294,11 +294,22 @@ npm test     # 运行测试
 
 ## 文档
 
+### 📚 项目文档
+- [CLAUDE.md](./CLAUDE.md) - 项目开发指南
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - 贡献指南
+- [CHANGELOG.md](./CHANGELOG.md) - 版本更新记录
+- [ROADMAP.md](./ROADMAP.md) - 项目路线图
+
+### 📖 功能文档
 - [核心功能](./docs/FEATURES.md) - 已实现功能列表
 - [增强功能](./docs/ENHANCEMENTS.md) - 详细增强功能文档
-- [实现计划](./docs/implementation-plan.md) - 开发进度
+- [FAQ](./docs/FAQ.md) - 常见问题解答 ⭐
+- [截图指南](./docs/SCREENSHOTS.md) - 截图和演示指南
+
+### 🔧 配置指南
 - [自定义翻译](./docs/TRANSLATIONS.md) - 如何创建自定义翻译文件
 - [金丝雀测试](./docs/CANARY_TEST.md) - AI 上下文状态监控指南
+- [实现计划](./docs/implementation-plan.md) - 开发进度
 
 ---
 

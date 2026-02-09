@@ -294,8 +294,21 @@ npm test     # Run tests
 
 ## Documentation
 
+### 📚 Project Docs
+- [CLAUDE.md](./CLAUDE.md) - Project development guide
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Contribution guide
+- [CHANGELOG.md](./CHANGELOG.md) - Version history
+- [ROADMAP.md](./ROADMAP.md) - Project roadmap
+
+### 📖 Feature Docs
 - [Core Features](./docs/FEATURES.md) - List of implemented features
 - [Enhancements](./docs/ENHANCEMENTS.md) - Detailed enhancement documentation
+- [FAQ](./docs/FAQ.md) - Frequently Asked Questions ⭐
+- [Screenshots Guide](./docs/SCREENSHOTS.md) - Screenshots and demo guide
+
+### 🔧 Configuration Guides
+- [Custom Translations](./docs/TRANSLATIONS.md) - Create custom translation files
+- [Canary Testing](./docs/CANARY_TEST.md) - AI context monitoring guide
 - [Implementation Plan](./docs/implementation-plan.md) - Development progress
 - [Custom Translations](./docs/TRANSLATIONS.md) - How to create custom translation files
 - [Canary Testing](./docs/CANARY_TEST.md) - AI context state monitoring guide
