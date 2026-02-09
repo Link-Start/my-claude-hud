@@ -17,7 +17,23 @@
       "Bash(git reset:*)",
       "Bash(git mv:*)",
       "Bash(ls:*)",
-      "mcp__zread__read_file"
+      "mcp__zread__read_file",
+      "Bash(sqlite3:*)",
+      "Bash(~/.claude/plugins/my-claude-hud/scripts/ensure-cc-switch-hud.sh:*)",
+      "Bash(/Users/link/Desktop/my-claude-hud/scripts/ensure-cc-switch-hud.sh)",
+      "Bash(find:*)",
+      "Bash(git -C /Users/link/Desktop/YYKitSwift reset --hard HEAD~1)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(git restore:*)",
+      "Bash(swift build:*)",
+      "Bash(gh release create v1.0.0 --title \"v1.0.0 - 🎉 首个正式发布\" --notes \"$\\(cat <<''EOF''\n# 🎉 My Claude HUD v1.0.0\n\n## 首个正式发布！\n\nClaude Code 实时状态栏 HUD - 显示上下文使用量、活跃工具、Agent、Todo 进度等。\n\n---\n\n## ✨ 主要功能\n\n### 📊 实时监控\n- 上下文使用量与进度条\n- 活跃工具追踪（Read、Write、Edit、Bash 等）\n- 运行中的 Agent 显示\n- Todo 列表进度\n\n### 🌿 Git 集成\n- 分支信息显示\n- 未提交更改标记\n- Ahead/behind 状态\n\n### 🎨 主题系统\n- 5 种内置主题（default、nord、dracula、monokai、solarized）\n- 紧凑/扩展布局切换\n- 中英文双语支持\n\n### ⚙️ 智能缓存\n- API 使用量缓存（60s TTL）\n- Git 状态缓存（5s TTL）\n- 会话统计跨会话追踪\n\n---\n\n## 📦 安装方式\n\n### GitHub 安装\n```bash\ngit clone https://github.com/Link-Start/my-claude-hud.git ~/.claude/plugins/my-claude-hud\ncd ~/.claude/plugins/my-claude-hud\nnpm install && npm run build\n```\n\n### 配置 Claude Code\n在 `~/.claude/settings.json` 中添加：\n```json\n{\n  \"statusLine\": {\n    \"type\": \"command\",\n    \"command\": \"node ~/.claude/plugins/my-claude-hud/dist/index.js\"\n  }\n}\n```\n\n---\n\n## 🚀 快捷操作\n\n```bash\n# 切换布局\nnode dist/index.js --action=toggle-layout\n\n# 显示统计\nnode dist/index.js --action=stats\n\n# 清除缓存\nnode dist/index.js --action=clear-cache\n\n# 帮助信息\nnode dist/index.js --action=help\n```\n\n---\n\n## 📚 文档\n\n- [README]\\(https://github.com/Link-Start/my-claude-hud#readme\\)\n- [CLAUDE.md]\\(https://github.com/Link-Start/my-claude-hud/blob/master/CLAUDE.md\\)\n- [CHANGELOG]\\(https://github.com/Link-Start/my-claude-hud/blob/master/CHANGELOG.md\\)\n\n---\n\n## 🙏 致谢\n\n灵感来源于 [Jarrod Watts]\\(https://github.com/jarrodwatts\\) 的 [claude-hud]\\(https://github.com/jarrodwatts/claude-hud\\) 项目。\n\n---\n\n## 📄 许可证\n\n[MIT]\\(LICENSE\\)\nEOF\n\\)\")",
+      "Bash(xcodebuild:*)",
+      "Bash(gh repo view:*)"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node /Users/link/Desktop/my-claude-hud/dist/index.js"
   }
 }

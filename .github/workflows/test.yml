@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    name: 测试和构建
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🟢 设置 Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📦 安装依赖
+        run: npm ci
+
+      - name: 🔨 构建
+        run: npm run build
+
+      - name: 🧪 运行测试
+        run: npm test
+
+      - name: 📊 生成覆盖率报告
+        run: npm run test:coverage
+
+      - name: 📤 上传覆盖率到 Codecov
+        uses: codecov/codecov-action@v3
+        if: matrix.node-version == '20.x'
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+  lint:
+    name: 代码检查
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🟢 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: 📦 安装依赖
+        run: npm ci
+
+      - name: 🔍 TypeScript 类型检查
+        run: npx tsc --noEmit
+
+      - name: 📏 格式检查（如果有配置）
+        run: |
+          if [ -f ".eslintrc.js" ]; then
+            npm run lint
+          else
+            echo "ESLint 未配置，跳过"
+          fi
+        continue-on-error: true

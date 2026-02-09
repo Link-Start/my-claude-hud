@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: 发布到 npm
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🟢 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 📦 安装依赖
+        run: npm ci
+
+      - name: 🔨 构建
+        run: npm run build
+
+      - name: 🧪 运行测试
+        run: npm test
+
+      - name: 📤 发布到 npm
+        run: npm publish --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 🏷️ 创建 GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            ## 发布说明 🚀
+
+            查看 [CHANGELOG.md](https://github.com/Link-Start/my-claude-hud/blob/master/CHANGELOG.md) 获取详细更新内容。
+
+            ## 安装
+
+            ```bash
+            npm install -g my-claude-hud@${{ github.ref }}
+            ```
+          draft: false
+          prerelease: false
+
+  notify:
+    name: 通知
+    runs-on: ubuntu-latest
+    needs: publish
+
+    steps:
+      - name: ✅ 发布成功
+        run: |
+          echo "🎉 my-claude-hud ${{ github.ref }} 发布成功！"
+          echo "📦 可在 npm 安装: npm install -g my-claude-hud@${{ github.ref }}"
