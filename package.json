@@ -1,7 +1,7 @@
 {
   "name": "my-claude-hud",
   "version": "1.0.0",
-  "description": "My custom Claude Code HUD - context, tools, agents, todos",
+  "description": "我的 Claude Code 状态栏插件 - 显示上下文、工具、Agent 和 Todo 进度",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
