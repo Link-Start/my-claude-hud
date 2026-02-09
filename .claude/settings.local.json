@@ -15,7 +15,9 @@
       "WebSearch",
       "Bash(npx tsx:*)",
       "Bash(git reset:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(ls:*)",
+      "mcp__zread__read_file"
     ]
   }
 }
