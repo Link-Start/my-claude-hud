@@ -6,7 +6,9 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 完成核心功能实现 - 分层渲染、多语言、缓存系统\n\n主要更新：\n- 重构渲染系统：将单文件 render.ts 拆分为分层模块（render/目录）\n- 新增多语言支持：i18n.ts + 自定义翻译文件\n- 实现 Git 缓存：5秒 TTL 仓库级缓存\n- 增强 API 使用量缓存：60秒成功/15秒失败 TTL\n- 新增快捷操作：toggle-layout、stats、clear-cache、help\n- 新增增强功能：成本估算、上下文预测、警告系统\n- 新增主题系统：5种内置颜色主题\n- 新增会话统计：跨会话使用量追踪\n\n配置系统：\n- 支持全局 + 项目级配置覆盖\n- 支持 legacy 配置迁移（layout → lineLayout）\n\n文档：\n- 添加 CLAUDE.md 项目指南\n- 添加 FEATURES.md 功能对比\n- 添加 Docs/ 目录详细文档\n- 添加配置示例文件\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(node /Users/link/Desktop/my-claude-hud/dist/index.js:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: 移除 package.json 中的 type: module 配置\n\n修复了 ES module 和 CommonJS 冲突问题：\n- 移除 \"type\": \"module\" 以使用 CommonJS\n- TypeScript 编译输出与运行时环境一致\n- 所有功能测试通过（help、stats、render）\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(chmod:*)",
+      "Bash(node:*)"
     ]
   }
 }
