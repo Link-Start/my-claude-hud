@@ -8,7 +8,14 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: 移除 package.json 中的 type: module 配置\n\n修复了 ES module 和 CommonJS 冲突问题：\n- 移除 \"type\": \"module\" 以使用 CommonJS\n- TypeScript 编译输出与运行时环境一致\n- 所有功能测试通过（help、stats、render）\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit:*)",
       "Bash(chmod:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(./scripts/init-canary.sh:*)",
+      "Bash(git push:*)",
+      "mcp__zread__get_repo_structure",
+      "WebSearch",
+      "Bash(npx tsx:*)",
+      "Bash(git reset:*)",
+      "Bash(git mv:*)"
     ]
   }
 }
