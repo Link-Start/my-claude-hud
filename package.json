@@ -1,14 +1,50 @@
 {
   "name": "my-claude-hud",
   "version": "1.0.0",
-  "description": "我的 Claude Code 状态栏插件 - 显示上下文、工具、Agent 和 Todo 进度",
+  "description": "Claude Code 实时状态栏 HUD - 显示上下文使用量、活跃工具、Agent、Todo 进度等",
   "main": "dist/index.js",
+  "bin": {
+    "my-claude-hud": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "config.json",
+    "LICENSE",
+    "README.md",
+    "scripts/postinstall.js"
+  ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "postinstall": "node scripts/postinstall.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "prepublishOnly": "npm run build && npm test"
   },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "statusline",
+    "hud",
+    "cli-plugin",
+    "developer-tools",
+    "anthropic"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Link-Start/my-claude-hud.git"
+  },
+  "author": "Link-Start",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Link-Start/my-claude-hud/issues"
+  },
+  "homepage": "https://github.com/Link-Start/my-claude-hud#readme",
   "devDependencies": {
+    "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.0.0"
   }
 }
