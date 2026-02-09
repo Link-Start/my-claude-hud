@@ -2,7 +2,6 @@
   "name": "my-claude-hud",
   "version": "1.0.0",
   "description": "My custom Claude Code HUD - context, tools, agents, todos",
-  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
