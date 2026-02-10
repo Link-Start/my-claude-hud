@@ -11,6 +11,7 @@ import { calculateCostFromStdin, formatCost, updateSessionCost, getSessionCost }
 import { projectContextUsage, formatProjection } from '../context-projection.js';
 import { checkAlerts, formatAlerts } from '../alerts.js';
 import { coloredBar, cyan, dim, magenta, red, yellow, getContextColor, quotaBar, RESET } from './colors.js';
+import { formatTokens, formatTimeUntil } from '../utils/format.js';
 
 const DEBUG = process.env.DEBUG?.includes('my-claude-hud') || process.env.DEBUG === '*';
 
@@ -243,16 +244,6 @@ export function renderSessionLine(ctx: RenderContext): string {
   return line;
 }
 
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) {
-    return `${(n / 1_000_000).toFixed(1)}M`;
-  }
-  if (n >= 1_000) {
-    return `${(n / 1_000).toFixed(0)}k`;
-  }
-  return n.toString();
-}
-
 function formatContextValue(ctx: RenderContext, percent: number, mode: 'percent' | 'tokens'): string {
   if (mode === 'tokens') {
     const totalTokens = getTotalTokens(ctx.stdin);
@@ -282,16 +273,9 @@ function formatUsageError(error?: string): string {
   return ` (${error})`;
 }
 
+/**
+ * 格式化重置时间（使用统一工具）
+ */
 function formatResetTime(resetAt: Date | null): string {
-  if (!resetAt) return '';
-  const now = new Date();
-  const diffMs = resetAt.getTime() - now.getTime();
-  if (diffMs <= 0) return '';
-
-  const diffMins = Math.ceil(diffMs / 60000);
-  if (diffMins < 60) return `${diffMins}m`;
-
-  const hours = Math.floor(diffMins / 60);
-  const mins = diffMins % 60;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  return formatTimeUntil(resetAt);
 }

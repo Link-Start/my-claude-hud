@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import type { RenderContext, ToolDetailLevel, ToolEntry } from '../types.js';
 import { yellow, green, cyan, dim, red } from './colors.js';
 import { translateToolName, translateToolGroup } from '../i18n.js';
+import { formatDuration } from '../utils/format.js';
 
 // 工具分组配置（工具名 -> 分组名）
 const TOOL_GROUPS: Record<string, string> = {
@@ -341,7 +342,7 @@ export function renderToolsLine(ctx: RenderContext): string | null {
         const translatedName = translateToolName(name, lang);
 
         if (avgDuration >= 1000) {
-          parts.push(`${icon} ${translatedName} ${dim(`(${formatDuration(avgDuration)})`)} ${dim(`×${data.count}`)}`);
+          parts.push(`${icon} ${translatedName} ${dim(`(${formatDuration(avgDuration, { format: 'seconds' })})`)} ${dim(`×${data.count}`)}`);
         } else {
           parts.push(`${icon} ${translatedName} ${dim(`×${data.count}`)}`);
         }
@@ -354,15 +355,6 @@ export function renderToolsLine(ctx: RenderContext): string | null {
   }
 
   return parts.join(' | ');
-}
-
-/**
- * 格式化时长显示
- */
-function formatDuration(ms: number): string {
-  if (ms < 1000) return '<1s';
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
 }
 
 function truncatePath(filePath: string, maxLen: number = 20): string {

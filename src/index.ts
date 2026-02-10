@@ -8,10 +8,10 @@
 
 import { readStdin } from './stdin.js';
 import { parseTranscript } from './transcript.js';
-import { getGitStatus } from './git.js';
+import { getGitStatus, setGitCacheConfig } from './git.js';
 import { loadConfig } from './config.js';
 import { countConfigs } from './config-reader.js';
-import { getApiUsage } from './usage-api.js';
+import { getApiUsage, setUsageCacheConfig } from './usage-api.js';
 import { render } from './render/index.js';
 import { parseExtraCmdArg, runExtraCmd } from './extra-cmd.js';
 import { createDebug } from './debug.js';
@@ -96,6 +96,12 @@ export async function main(): Promise<void> {
 
     // 设置颜色主题
     setColorTheme(config.theme.colorTheme, config.theme.customColors);
+
+    // 设置 Git 缓存配置
+    setGitCacheConfig(config);
+
+    // 设置 API 使用量缓存配置
+    setUsageCacheConfig(config);
 
     // 获取 Git 状态
     const gitStatus = config.gitStatus.enabled && stdin.cwd

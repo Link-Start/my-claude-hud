@@ -11,6 +11,7 @@ import { renderTodosLine } from './todos-line.js';
 import { renderCanaryLine } from './canary-line.js';
 import { renderMemoryLine } from './memory-line.js';
 import { dim, RESET } from './colors.js';
+import { formatTokens, formatTimeUntil } from '../utils/format.js';
 
 /**
  * 移除 ANSI 转义码
@@ -205,8 +206,8 @@ function renderExpanded(ctx: RenderContext): string[] {
       parts.push(yellow(`⚠${errorHint}`));
     } else if (isLimitReached(ctx.usageData)) {
       const resetTime = ctx.usageData.fiveHour === 100
-        ? formatResetTime(ctx.usageData.fiveHourResetAt)
-        : formatResetTime(ctx.usageData.sevenDayResetAt);
+        ? formatTimeUntil(ctx.usageData.fiveHourResetAt)
+        : formatTimeUntil(ctx.usageData.sevenDayResetAt);
       parts.push(red(`⚠ Limit${resetTime ? ` (${resetTime})` : ''}`));
     } else {
       const threshold = display?.usageThreshold ?? 0;
@@ -216,7 +217,7 @@ function renderExpanded(ctx: RenderContext): string[] {
 
       if (effectiveUsage >= threshold) {
         const fiveHourDisplay = fiveHour !== null ? `${getContextColor(fiveHour)}${fiveHour}%${RESET}` : dim('--');
-        const fiveHourReset = formatResetTime(ctx.usageData.fiveHourResetAt);
+        const fiveHourReset = formatTimeUntil(ctx.usageData.fiveHourResetAt);
         const fiveHourPart = fiveHourReset
           ? `${quotaBar(fiveHour ?? 0)} ${fiveHourDisplay} (${fiveHourReset} / 5h)`
           : `${quotaBar(fiveHour ?? 0)} ${fiveHourDisplay}`;
@@ -330,8 +331,8 @@ function renderExpanded(ctx: RenderContext): string[] {
       lines.push(yellow(`usage: ⚠${errorHint}`));
     } else if (isLimitReached(ctx.usageData)) {
       const resetTime = ctx.usageData.fiveHour === 100
-        ? formatResetTime(ctx.usageData.fiveHourResetAt)
-        : formatResetTime(ctx.usageData.sevenDayResetAt);
+        ? formatTimeUntil(ctx.usageData.fiveHourResetAt)
+        : formatTimeUntil(ctx.usageData.sevenDayResetAt);
       lines.push(red(`⚠ Limit reached${resetTime ? ` (resets ${resetTime})` : ''}`));
     } else {
       const threshold = display?.usageThreshold ?? 0;
@@ -341,7 +342,7 @@ function renderExpanded(ctx: RenderContext): string[] {
 
       if (effectiveUsage >= threshold) {
         const fiveHourDisplay = fiveHour !== null ? `${getContextColor(fiveHour)}${fiveHour}%${RESET}` : dim('--');
-        const fiveHourReset = formatResetTime(ctx.usageData.fiveHourResetAt);
+        const fiveHourReset = formatTimeUntil(ctx.usageData.fiveHourResetAt);
         const fiveHourPart = fiveHourReset
           ? `5h: ${fiveHourDisplay} (${fiveHourReset})`
           : `5h: ${fiveHourDisplay}`;
@@ -349,7 +350,7 @@ function renderExpanded(ctx: RenderContext): string[] {
         const sevenDayThreshold = display?.sevenDayThreshold ?? 80;
         if (sevenDay !== null && sevenDay >= sevenDayThreshold) {
           const sevenDayDisplay = `${getContextColor(sevenDay)}${sevenDay}%${RESET}`;
-          const sevenDayReset = formatResetTime(ctx.usageData.sevenDayResetAt);
+          const sevenDayReset = formatTimeUntil(ctx.usageData.sevenDayResetAt);
           const sevenDayPart = `7d: ${sevenDayDisplay}`;
           lines.push(`${fiveHourPart} | ${sevenDayPart}`);
         } else {
@@ -360,36 +361,6 @@ function renderExpanded(ctx: RenderContext): string[] {
   }
 
   return lines;
-}
-
-/**
- * 格式化 token 数量
- */
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) {
-    return `${(n / 1_000_000).toFixed(1)}M`;
-  }
-  if (n >= 1_000) {
-    return `${(n / 1_000).toFixed(0)}k`;
-  }
-  return n.toString();
-}
-
-/**
- * 格式化重置时间
- */
-function formatResetTime(resetAt: Date | null): string {
-  if (!resetAt) return '';
-  const now = Date.now();
-  const diffMs = resetAt.getTime() - now;
-  if (diffMs <= 0) return '';
-
-  const diffMins = Math.ceil(diffMs / 60000);
-  if (diffMins < 60) return `${diffMins}m`;
-
-  const hours = Math.floor(diffMins / 60);
-  const mins = diffMins % 60;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
 /**

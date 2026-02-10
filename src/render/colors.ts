@@ -5,6 +5,7 @@
 
 import type { ThemeColors } from '../themes.js';
 import { getTheme, parseCustomColors } from '../themes.js';
+export { formatTokens } from '../utils/format.js';
 
 // 默认颜色（如果没有配置主题）
 export const RESET = '\x1b[0m';
@@ -157,18 +158,4 @@ export function quotaBar(percent: number, width: number = 10): string {
   const colors = getColors();
   const color = getQuotaColor(safePercent);
   return `${color}${'█'.repeat(filled)}${colors.dim}${'░'.repeat(empty)}${colors.reset}`;
-}
-
-/**
- * 格式化 token 数量
- * 大数字使用 k/M 后缀
- */
-export function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000) {
-    return `${(tokens / 1_000_000).toFixed(1)}M`;
-  }
-  if (tokens >= 1_000) {
-    return `${(tokens / 1_000).toFixed(1)}k`;
-  }
-  return Math.round(tokens).toString();
 }

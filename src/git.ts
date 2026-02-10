@@ -8,6 +8,10 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { execSync } from 'node:child_process';
 import type { GitInfo, FileStats } from './types.js';
+import { getCacheConfig } from './cache-config.js';
+import { createDebug } from './debug.js';
+
+const debug = createDebug('git');
 
 // === 类型定义 ===
 
@@ -29,8 +33,17 @@ interface GitCacheFile {
 // === 常量 ===
 
 const CACHE_VERSION = '1.0.0';
-const CACHE_TTL_MS = 5000;  // 缓存有效期 5 秒
-const MAX_CACHE_SIZE = 50;  // 最多缓存 50 个仓库
+
+// 缓存配置（可通过 setCacheConfig 更新）
+let cacheConfig = getCacheConfig();
+
+/**
+ * 设置缓存配置
+ * @param config - 用户配置（可选）
+ */
+export function setGitCacheConfig(config?: import('./types.js').HudConfig): void {
+  cacheConfig = getCacheConfig(config);
+}
 
 // === 路径工具 ===
 
@@ -45,19 +58,9 @@ function getCacheFilePath(): string {
  * 获取仓库的唯一标识（使用规范化路径）
  */
 function getRepoKey(cwd: string): string {
-  // 规范化路径
-  const normalized = path.resolve(cwd);
-  // 尝试获取 .git 目录位置作为更精确的仓库标识
-  try {
-    const gitDir = execSync('git rev-parse --git-dir', {
-      cwd,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    }).trim();
-    return path.resolve(cwd, gitDir);
-  } catch {
-    return normalized;
-  }
+  // 简化：直接使用规范化路径
+  // git status 会在非 git 仓库中抛出错误
+  return path.resolve(cwd);
 }
 
 // === 缓存管理 ===
@@ -82,6 +85,7 @@ function readCacheFile(): GitCacheFile | null {
 
     return cache;
   } catch {
+    // 缓存读取失败，返回 null
     return null;
   }
 }
@@ -113,7 +117,7 @@ function cleanExpiredCache(cache: GitCacheFile, now: number): void {
 
   for (const key of keys) {
     const data = cache.repositories[key];
-    if (now - data.timestamp > CACHE_TTL_MS) {
+    if (now - data.timestamp > cacheConfig.git.ttlMs) {
       delete cache.repositories[key];
       removed++;
     }
@@ -121,14 +125,14 @@ function cleanExpiredCache(cache: GitCacheFile, now: number): void {
 
   // 如果缓存仍然过大，删除最旧的条目
   const remaining = Object.keys(cache.repositories);
-  if (remaining.length > MAX_CACHE_SIZE) {
+  if (remaining.length > cacheConfig.git.maxRepositories) {
     // 按时间戳排序
     const sorted = remaining
       .map(key => ({ key, timestamp: cache.repositories[key].timestamp }))
       .sort((a, b) => a.timestamp - b.timestamp);
 
     // 删除最旧的条目
-    const toRemove = sorted.slice(0, sorted.length - MAX_CACHE_SIZE);
+    const toRemove = sorted.slice(0, sorted.length - cacheConfig.git.maxRepositories);
     for (const { key } of toRemove) {
       delete cache.repositories[key];
       removed++;
@@ -149,7 +153,7 @@ function getFromCache(repoKey: string): GitInfo | null {
   const now = Date.now();
 
   // 检查是否过期
-  if (now - data.timestamp > CACHE_TTL_MS) {
+  if (now - data.timestamp > cacheConfig.git.ttlMs) {
     return null;
   }
 
@@ -197,15 +201,9 @@ function saveToCache(repoKey: string, gitInfo: GitInfo, repoPath: string): void 
 
 /**
  * 获取当前 Git 仓库的状态信息（带缓存）
+ * 优化版本：使用 git status -b --porcelain 合并多个命令
  */
 export function getGitStatus(cwd: string): GitInfo | null {
-  try {
-    // 检查是否在 Git 仓库中
-    execSync('git rev-parse --git-dir', { cwd, stdio: 'ignore' });
-  } catch {
-    return null;
-  }
-
   // 获取仓库唯一标识
   const repoKey = getRepoKey(cwd);
 
@@ -217,56 +215,79 @@ export function getGitStatus(cwd: string): GitInfo | null {
 
   // 缓存未命中，执行 git 命令获取最新状态
   try {
-    // 获取当前分支
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd, encoding: 'utf-8' }).trim();
+    // 使用单一命令获取所有 Git 状态信息
+    // git status -b --porcelain 输出格式：
+    // ## branchName...origin/upstream [ahead N, behind M]
+    // XY filename
+    const output = execSync('git status -b --porcelain', {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'], // 抑制错误输出
+    });
 
-    // 解析文件统计
-    const fileStats = parseFileStats(cwd);
-    const isDirty = fileStats.modified > 0 || fileStats.added > 0 || fileStats.deleted > 0 || fileStats.untracked > 0;
-
-    // 获取 ahead/behind 信息
-    let ahead = 0;
-    let behind = 0;
-
-    try {
-      const aheadBehind = execSync('git rev-list --left-right --count @{u}...HEAD 2>/dev/null || echo ""', {
-        cwd,
-        encoding: 'utf-8',
-      }).trim();
-
-      if (aheadBehind) {
-        const match = aheadBehind.match(/^(\d+)\s+(\d+)$/);
-        if (match) {
-          ahead = Number.parseInt(match[2], 10);
-          behind = Number.parseInt(match[1], 10);
-        }
-      }
-    } catch {
-      // 忽略错误，使用默认值 0
-    }
-
-    const result: GitInfo = {
-      branch,
-      isDirty,
-      ahead,
-      behind,
-      fileStats,
-    };
+    const result = parseGitStatusOutput(output);
 
     // 保存到缓存
-    saveToCache(repoKey, result, cwd);
+    if (result) {
+      saveToCache(repoKey, result, cwd);
+    }
 
     return result;
-  } catch {
+  } catch (error) {
+    debug('Failed to get git status', error instanceof Error ? error.message : 'Unknown error', cwd);
     return null;
   }
 }
 
 /**
- * 解析 git status --porcelain 输出为文件统计
- * Starship 兼容格式：!modified +added ✘deleted ?untracked
+ * 解析 git status -b --porcelain 输出
  */
-function parseFileStats(cwd: string): FileStats {
+function parseGitStatusOutput(output: string): GitInfo | null {
+  const lines = output.split('\n').filter(line => line.length > 0);
+  if (lines.length === 0) {
+    return null;
+  }
+
+  // 第一行是分支信息和 ahead/behind
+  // 格式: ## branchName...origin/upstream [ahead N, behind M]
+  // 或: ## branchName (无 upstream)
+  const headerLine = lines[0];
+  const headerMatch = headerLine.match(/^##\s+(\S+)(?:\.\.\.(\S+)(?:\s+\[([^\]]+)\])?)?/);
+
+  if (!headerMatch) {
+    return null;
+  }
+
+  const branch = headerMatch[1];
+  let ahead = 0;
+  let behind = 0;
+
+  // 解析 ahead/behind 信息
+  if (headerMatch[3]) {
+    const aheadBehind = headerMatch[3];
+    const aheadMatch = aheadBehind.match(/ahead\s+(\d+)/);
+    const behindMatch = aheadBehind.match(/behind\s+(\d+)/);
+    if (aheadMatch) ahead = Number.parseInt(aheadMatch[1], 10);
+    if (behindMatch) behind = Number.parseInt(behindMatch[1], 10);
+  }
+
+  // 解析文件状态
+  const fileStats = parseFileStatusLines(lines.slice(1));
+  const isDirty = fileStats.modified > 0 || fileStats.added > 0 || fileStats.deleted > 0 || fileStats.untracked > 0;
+
+  return {
+    branch,
+    isDirty,
+    ahead,
+    behind,
+    fileStats,
+  };
+}
+
+/**
+ * 解析文件状态行
+ */
+function parseFileStatusLines(lines: string[]): FileStats {
   const result: FileStats = {
     modified: 0,
     added: 0,
@@ -274,46 +295,49 @@ function parseFileStats(cwd: string): FileStats {
     untracked: 0,
   };
 
-  try {
-    const statusOutput = execSync('git --no-optional-locks status --porcelain', { cwd, encoding: 'utf-8' });
+  for (const line of lines) {
+    if (!line) continue;
 
-    for (const line of statusOutput.split('\n')) {
-      if (!line) continue;
-
-      // ?? 开头是未跟踪文件
-      if (line.startsWith('??')) {
-        result.untracked++;
-        continue;
-      }
-
-      if (line.length < 2) continue;
-
-      const index = line[0];    // 暂存区状态
-      const worktree = line[1]; // 工作区状态
-
-      // 已暂存的添加
-      if (index === 'A') {
-        result.added++;
-      }
-      // 已暂存的删除
-      else if (index === 'D') {
-        result.deleted++;
-      }
-      // 已暂存的修改、重命名、复制
-      else if (index === 'M' || index === 'R' || index === 'C') {
-        result.modified++;
-      }
-      // 工作区的删除（暂存区没有删除）
-      else if (index !== 'D' && worktree === 'D') {
-        result.deleted++;
-      }
-      // 工作区的修改（暂存区没有修改）
-      else if (index !== 'M' && worktree === 'M') {
-        result.modified++;
-      }
+    // ?? 开头是未跟踪文件
+    if (line.startsWith('??')) {
+      result.untracked++;
+      continue;
     }
-  } catch {
-    // 出错时返回零值
+
+    if (line.length < 2) continue;
+
+    const index = line[0];    // 暂存区状态
+    const worktree = line[1]; // 工作区状态
+
+    // 已暂存的添加
+    if (index === 'A') {
+      result.added++;
+    }
+    // 已暂存的删除
+    else if (index === 'D') {
+      result.deleted++;
+    }
+    // 已暂存的修改
+    else if (index === 'M') {
+      result.modified++;
+    }
+
+    // 工作区的修改（不在暂存区）
+    if (worktree === 'M' && index !== 'M') {
+      result.modified++;
+    }
+    // 工作区的删除（不在暂存区）
+    else if (worktree === 'D' && index !== 'D') {
+      result.deleted++;
+    }
+    // 工作区的添加（未暂存的新文件）
+    else if (worktree === 'A' && index !== 'A') {
+      result.added++;
+    }
+    // 重命名
+    else if (index === 'R' || worktree === 'R') {
+      result.modified++;
+    }
   }
 
   return result;
@@ -385,6 +409,7 @@ export function getGitCacheStats(): { count: number; repositories: string[] } | 
       repositories,
     };
   } catch {
+    // 缓存读取失败，返回 null
     return null;
   }
 }

@@ -171,6 +171,22 @@ export interface HudConfig {
     maxFilesPerProject?: number;
     trackingEnabled?: boolean;
   };
+  cache?: {
+    // 缓存配置
+    git?: {
+      ttlMs?: number;
+      maxRepositories?: number;
+    };
+    api?: {
+      ttlMs?: number;
+      failureTtlMs?: number;
+      keychainBackoffMs?: number;
+    };
+    speed?: {
+      ttlMs?: number;
+      updateIntervalMs?: number;
+    };
+  };
 }
 
 // 配置文件统计

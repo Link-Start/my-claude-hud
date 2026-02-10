@@ -6,6 +6,7 @@
 import type { RenderContext, AgentEntry } from '../types.js';
 import { yellow, green, magenta, dim } from './colors.js';
 import { translateAgentType } from '../i18n.js';
+import { formatDuration } from '../utils/format.js';
 
 export function renderAgentsLine(ctx: RenderContext): string | null {
   const { agents } = ctx.transcript;
@@ -37,7 +38,11 @@ function formatAgent(agent: AgentEntry, lang: 'zh' | 'en' = 'en'): string {
   const type = magenta(translatedType);
   const model = agent.model ? dim(`[${agent.model}]`) : '';
   const desc = agent.description ? dim(`: ${truncateDesc(agent.description)}`) : '';
-  const elapsed = formatElapsed(agent);
+  const now = Date.now();
+  const start = agent.startTime.getTime();
+  const end = agent.endTime?.getTime() ?? now;
+  const ms = end - start;
+  const elapsed = formatDuration(ms, { format: 'precise' });
 
   return `${statusIcon} ${type}${model ? ` ${model}` : ''}${desc} ${dim(`(${elapsed})`)}`;
 }
@@ -45,18 +50,4 @@ function formatAgent(agent: AgentEntry, lang: 'zh' | 'en' = 'en'): string {
 function truncateDesc(desc: string, maxLen: number = 40): string {
   if (desc.length <= maxLen) return desc;
   return desc.slice(0, maxLen - 3) + '...';
-}
-
-function formatElapsed(agent: AgentEntry): string {
-  const now = Date.now();
-  const start = agent.startTime.getTime();
-  const end = agent.endTime?.getTime() ?? now;
-  const ms = end - start;
-
-  if (ms < 1000) return '<1s';
-  if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-
-  const mins = Math.floor(ms / 60000);
-  const secs = Math.round((ms % 60000) / 1000);
-  return `${mins}m ${secs}s`;
 }

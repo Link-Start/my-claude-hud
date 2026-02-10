@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { StdinInput } from './types.js';
+import { getCacheConfig } from './cache-config.js';
 
 interface SpeedData {
   tokensPerSecond: number | null;
@@ -15,7 +16,17 @@ interface SpeedData {
 // === 缓存配置 ===
 
 const SPEED_CACHE_FILE = '.speed-cache.json';
-const SPEED_CACHE_TTL_MS = 5000; // 5 秒 TTL
+
+// 缓存配置（可通过 setSpeedCacheConfig 更新）
+let cacheConfig = getCacheConfig();
+
+/**
+ * 设置缓存配置
+ * @param config - 用户配置（可选）
+ */
+export function setSpeedCacheConfig(config?: import('./types.js').HudConfig): void {
+  cacheConfig = getCacheConfig(config);
+}
 
 interface SpeedCacheData {
   tokens: number;
@@ -27,7 +38,6 @@ let speedData: SpeedData = {
   lastUpdate: 0,
 };
 
-const SPEED_UPDATE_INTERVAL = 2000; // 2 秒更新一次
 let lastTokenCount = 0;
 let lastTimestamp = 0;
 
@@ -50,7 +60,7 @@ function readCachedSpeed(now: number): number | null {
     const cache: SpeedCacheData = JSON.parse(content);
 
     // 检查 TTL
-    if (now - cache.timestamp >= SPEED_CACHE_TTL_MS) {
+    if (now - cache.timestamp >= cacheConfig.speed.ttlMs) {
       return null;
     }
 
@@ -98,7 +108,7 @@ export function updateSpeed(currentTokenCount: number): void {
   }
 
   const timeDiff = now - lastTimestamp;
-  if (timeDiff < SPEED_UPDATE_INTERVAL) {
+  if (timeDiff < cacheConfig.speed.updateIntervalMs) {
     return;
   }
 

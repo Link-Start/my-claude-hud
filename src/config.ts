@@ -6,68 +6,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import type { DisplayLanguage } from './types.js';
-
-export type LineLayoutType = 'compact' | 'expanded';
-export type AutocompactBufferMode = 'enabled' | 'disabled';
-export type ContextValueMode = 'percent' | 'tokens';
-export type ToolDetailLevel = 'compact' | 'semantic' | 'directory';
-export type MemoryInsightsPosition = 'before' | 'after' | 'inline';
-
-export interface HudConfig {
-  lineLayout: LineLayoutType;
-  showSeparators: boolean;
-  pathLevels: 1 | 2 | 3;
-  gitStatus: {
-    enabled: boolean;
-    showDirty: boolean;
-    showAheadBehind: boolean;
-    showFileStats: boolean;
-  };
-  display: {
-    showModel: boolean;
-    showContextBar: boolean;
-    contextValue: ContextValueMode;
-    showConfigCounts: boolean;
-    showDuration: boolean;
-    showSpeed: boolean;
-    showTokenBreakdown: boolean;
-    showUsage: boolean;
-    usageBarEnabled: boolean;
-    showTools: boolean;
-    showAgents: boolean;
-    showTodos: boolean;
-    showCost: boolean;
-    autocompactBuffer: AutocompactBufferMode;
-    usageThreshold: number;
-    sevenDayThreshold: number;
-    environmentThreshold: number;
-    displayLanguage: DisplayLanguage;
-    toolDetailLevel: ToolDetailLevel;
-    showMemoryInsights: boolean;
-    memoryInsightsPosition: MemoryInsightsPosition;
-    smartDisplay: boolean;
-  };
-  alerts: {
-    enabled: boolean;
-    contextWarning: number;
-    contextCritical: number;
-    apiLimitWarning: number;
-  };
-  theme: {
-    colorTheme: string;
-    customColors?: Record<string, string>;
-  };
-  i18n?: {
-    customTranslationFile?: string;
-  };
-  memory?: {
-    enabled: boolean;
-    maxProjects: number;
-    maxFilesPerProject: number;
-    trackingEnabled: boolean;
-  };
-}
+import type {
+  DisplayLanguage,
+  HudConfig,
+  LineLayoutType,
+  AutocompactBufferMode,
+  ContextValueMode,
+  ToolDetailLevel,
+  MemoryInsightsPosition,
+} from './types.js';
 
 // 默认配置
 export const DEFAULT_CONFIG: HudConfig = {
@@ -209,6 +156,16 @@ function migrateConfig(userConfig: Partial<HudConfig> & LegacyConfig): Partial<H
 
 // === 配置合并 ===
 
+// 辅助函数：安全获取配置值
+function getDisplayValue<T>(
+  display: Partial<HudConfig['display']> | undefined,
+  key: keyof HudConfig['display'],
+  defaultValue: T
+): T {
+  const value = display?.[key];
+  return value !== undefined ? value as T : defaultValue;
+}
+
 function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
   const migrated = migrateConfig(userConfig);
 
@@ -240,66 +197,38 @@ function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
   };
 
   const display = {
-    showModel: typeof migrated.display?.showModel === 'boolean'
-      ? migrated.display.showModel
-      : DEFAULT_CONFIG.display.showModel,
-    showContextBar: typeof migrated.display?.showContextBar === 'boolean'
-      ? migrated.display.showContextBar
-      : DEFAULT_CONFIG.display.showContextBar,
+    showModel: getDisplayValue(migrated.display, 'showModel', DEFAULT_CONFIG.display.showModel),
+    showContextBar: getDisplayValue(migrated.display, 'showContextBar', DEFAULT_CONFIG.display.showContextBar),
     contextValue: validateContextValue(migrated.display?.contextValue)
-      ? migrated.display.contextValue
+      ? migrated.display!.contextValue!
       : DEFAULT_CONFIG.display.contextValue,
-    showConfigCounts: typeof migrated.display?.showConfigCounts === 'boolean'
-      ? migrated.display.showConfigCounts
-      : DEFAULT_CONFIG.display.showConfigCounts,
-    showDuration: typeof migrated.display?.showDuration === 'boolean'
-      ? migrated.display.showDuration
-      : DEFAULT_CONFIG.display.showDuration,
-    showSpeed: typeof migrated.display?.showSpeed === 'boolean'
-      ? migrated.display.showSpeed
-      : DEFAULT_CONFIG.display.showSpeed,
-    showTokenBreakdown: typeof migrated.display?.showTokenBreakdown === 'boolean'
-      ? migrated.display.showTokenBreakdown
-      : DEFAULT_CONFIG.display.showTokenBreakdown,
-    showUsage: typeof migrated.display?.showUsage === 'boolean'
-      ? migrated.display.showUsage
-      : DEFAULT_CONFIG.display.showUsage,
-    usageBarEnabled: typeof migrated.display?.usageBarEnabled === 'boolean'
-      ? migrated.display.usageBarEnabled
-      : DEFAULT_CONFIG.display.usageBarEnabled,
-    showTools: typeof migrated.display?.showTools === 'boolean'
-      ? migrated.display.showTools
-      : DEFAULT_CONFIG.display.showTools,
-    showAgents: typeof migrated.display?.showAgents === 'boolean'
-      ? migrated.display.showAgents
-      : DEFAULT_CONFIG.display.showAgents,
-    showTodos: typeof migrated.display?.showTodos === 'boolean'
-      ? migrated.display.showTodos
-      : DEFAULT_CONFIG.display.showTodos,
-    showCost: typeof migrated.display?.showCost === 'boolean'
-      ? migrated.display.showCost
-      : DEFAULT_CONFIG.display.showCost,
+    showConfigCounts: getDisplayValue(migrated.display, 'showConfigCounts', DEFAULT_CONFIG.display.showConfigCounts),
+    showDuration: getDisplayValue(migrated.display, 'showDuration', DEFAULT_CONFIG.display.showDuration),
+    showSpeed: getDisplayValue(migrated.display, 'showSpeed', DEFAULT_CONFIG.display.showSpeed),
+    showTokenBreakdown: getDisplayValue(migrated.display, 'showTokenBreakdown', DEFAULT_CONFIG.display.showTokenBreakdown),
+    showUsage: getDisplayValue(migrated.display, 'showUsage', DEFAULT_CONFIG.display.showUsage),
+    usageBarEnabled: getDisplayValue(migrated.display, 'usageBarEnabled', DEFAULT_CONFIG.display.usageBarEnabled),
+    showTools: getDisplayValue(migrated.display, 'showTools', DEFAULT_CONFIG.display.showTools),
+    showAgents: getDisplayValue(migrated.display, 'showAgents', DEFAULT_CONFIG.display.showAgents),
+    showTodos: getDisplayValue(migrated.display, 'showTodos', DEFAULT_CONFIG.display.showTodos),
+    showCost: getDisplayValue(migrated.display, 'showCost', DEFAULT_CONFIG.display.showCost),
     autocompactBuffer: validateAutocompactBuffer(migrated.display?.autocompactBuffer)
-      ? migrated.display.autocompactBuffer
+      ? migrated.display!.autocompactBuffer!
       : DEFAULT_CONFIG.display.autocompactBuffer,
     usageThreshold: validateThreshold(migrated.display?.usageThreshold, 100),
     sevenDayThreshold: validateThreshold(migrated.display?.sevenDayThreshold, 100),
     environmentThreshold: validateThreshold(migrated.display?.environmentThreshold, 100),
     displayLanguage: (migrated.display?.displayLanguage === 'zh' || migrated.display?.displayLanguage === 'en')
-      ? migrated.display.displayLanguage
+      ? migrated.display.displayLanguage!
       : DEFAULT_CONFIG.display.displayLanguage,
     toolDetailLevel: validateToolDetailLevel(migrated.display?.toolDetailLevel)
-      ? migrated.display.toolDetailLevel
+      ? migrated.display!.toolDetailLevel!
       : DEFAULT_CONFIG.display.toolDetailLevel,
-    showMemoryInsights: typeof migrated.display?.showMemoryInsights === 'boolean'
-      ? migrated.display.showMemoryInsights
-      : DEFAULT_CONFIG.display.showMemoryInsights,
+    showMemoryInsights: getDisplayValue(migrated.display, 'showMemoryInsights', DEFAULT_CONFIG.display.showMemoryInsights ?? false),
     memoryInsightsPosition: validateMemoryInsightsPosition(migrated.display?.memoryInsightsPosition)
-      ? migrated.display.memoryInsightsPosition
-      : DEFAULT_CONFIG.display.memoryInsightsPosition,
-    smartDisplay: typeof migrated.display?.smartDisplay === 'boolean'
-      ? migrated.display.smartDisplay
-      : DEFAULT_CONFIG.display.smartDisplay,
+      ? migrated.display!.memoryInsightsPosition!
+      : DEFAULT_CONFIG.display.memoryInsightsPosition ?? 'after',
+    smartDisplay: getDisplayValue(migrated.display, 'smartDisplay', DEFAULT_CONFIG.display.smartDisplay ?? false),
   };
 
   const alerts = {
@@ -342,6 +271,42 @@ function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
   return { lineLayout, showSeparators, pathLevels, gitStatus, display, alerts, theme, i18n, memory };
 }
 
+// === 通用深度合并函数 ===
+
+/**
+ * 深度合并两个对象
+ * 对于嵌套对象进行递归合并，非对象属性直接覆盖
+ *
+ * @param base - 基础对象
+ * @param override - 覆盖对象
+ * @returns 合并后的对象
+ */
+function deepMerge<T>(base: T, override: Partial<T>): T {
+  const result = { ...base };
+
+  for (const key in override) {
+    const value = override[key];
+    const baseValue = result[key as keyof T];
+
+    if (
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      baseValue !== null &&
+      typeof baseValue === 'object' &&
+      !Array.isArray(baseValue)
+    ) {
+      // 递归合并嵌套对象
+      result[key as keyof T] = deepMerge(baseValue as any, value) as any;
+    } else {
+      // 直接覆盖
+      result[key as keyof T] = value as any;
+    }
+  }
+
+  return result;
+}
+
 /**
  * 加载用户配置（支持项目配置覆盖）
  * @param cwd 当前工作目录，用于查找项目配置
@@ -354,23 +319,10 @@ export async function loadConfig(cwd?: string): Promise<HudConfig> {
   const projectConfigPath = cwd ? getProjectConfigPath(cwd) : null;
   const projectConfig = projectConfigPath ? loadConfigFile(projectConfigPath) : {};
 
-  // 3. 合并配置：全局配置 + 项目配置（项目配置覆盖全局配置）
-  const merged = { ...globalConfig, ...projectConfig };
+  // 3. 深度合并配置：全局配置 + 项目配置（项目配置覆盖全局配置）
+  const merged = deepMerge(globalConfig, projectConfig);
 
-  // 4. 深度合并嵌套对象
-  if (projectConfig.gitStatus) {
-    merged.gitStatus = { ...globalConfig.gitStatus, ...projectConfig.gitStatus };
-  }
-  if (projectConfig.display) {
-    merged.display = { ...globalConfig.display, ...projectConfig.display };
-  }
-  if (projectConfig.alerts) {
-    merged.alerts = { ...globalConfig.alerts, ...projectConfig.alerts };
-  }
-  if (projectConfig.memory) {
-    merged.memory = { ...globalConfig.memory, ...projectConfig.memory };
-  }
-
+  // 4. 验证和迁移配置
   return mergeConfig(merged);
 }
 

@@ -7,6 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { RenderContext, ToolEntry } from './types.js';
+import { formatDuration } from './utils/format.js';
 
 // === 类型定义 ===
 
@@ -460,18 +461,6 @@ export function getSessionStats(projectMemory: ProjectMemory): {
     totalSessions: projectMemory.totalSessions,
     avgDuration: formatDuration(projectMemory.averageSessionDuration),
   };
-}
-
-/**
- * 格式化时长
- */
-function formatDuration(ms: number): string {
-  if (ms < 60000) return '<1m';
-  const mins = Math.floor(ms / 60000);
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  const remainingMins = mins % 60;
-  return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
 }
 
 // === 清理操作 ===

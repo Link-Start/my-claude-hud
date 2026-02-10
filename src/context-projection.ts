@@ -4,6 +4,7 @@
  */
 
 import type { StdinInput, RenderContext } from './types.js';
+import { formatTokens, formatDuration } from './utils/format.js';
 
 /**
  * 预测结果
@@ -85,7 +86,7 @@ export function projectContextUsage(ctx: RenderContext): ProjectionResult {
 
   // 估算剩余时间
   const timeRemainingMs = messagesRemaining * avgDuration;
-  const timeRemainingStr = formatDuration(timeRemainingMs);
+  const timeRemainingStr = formatDuration(timeRemainingMs, { format: 'estimate' });
 
   return {
     remainingTokens: remaining,
@@ -110,24 +111,6 @@ function getTotalTokens(data: StdinInput): number {
 }
 
 /**
- * 格式化时长
- */
-function formatDuration(ms: number): string {
-  if (ms < 60000) {
-    return `<1m`;
-  }
-
-  const mins = Math.floor(ms / 60000);
-  if (mins < 60) {
-    return `~${mins}m`;
-  }
-
-  const hours = Math.floor(mins / 60);
-  const remainingMins = mins % 60;
-  return remainingMins > 0 ? `~${hours}h ${remainingMins}m` : `~${hours}h`;
-}
-
-/**
  * 格式化预测结果用于显示
  */
 export function formatProjection(projection: ProjectionResult): string {
@@ -135,7 +118,7 @@ export function formatProjection(projection: ProjectionResult): string {
 
   // 如果剩余空间很大，显示 token 数量
   if (remainingTokens > 50000) {
-    return `~${formatTokens(remainingTokens)} remaining`;
+    return `~${formatTokens(remainingTokens, { withUnit: true })} remaining`;
   }
 
   // 如果剩余空间较小，显示消息数量和时间
@@ -147,17 +130,4 @@ export function formatProjection(projection: ProjectionResult): string {
   }
 
   return 'context nearly full';
-}
-
-/**
- * 格式化 token 数量
- */
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) {
-    return `${(n / 1_000_000).toFixed(1)}M tokens`;
-  }
-  if (n >= 1_000) {
-    return `${(n / 1_000).toFixed(0)}k tokens`;
-  }
-  return `${n} tokens`;
 }

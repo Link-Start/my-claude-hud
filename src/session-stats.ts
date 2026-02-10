@@ -7,6 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { ToolEntry } from './types.js';
+import { formatTokens, formatDuration } from './utils/format.js';
 
 const STATS_CACHE_FILE = '.session-stats.json';
 const STATS_CACHE_KEY = 'history_stats';
@@ -153,11 +154,11 @@ export function formatSessionStats(stats: SessionStats): string {
   parts.push(`Session #${stats.totalSessions}`);
 
   // 总 token 使用量
-  const totalTokens = formatTokens(stats.totalTokensUsed);
+  const totalTokens = formatTokens(stats.totalTokensUsed, { withUnit: true });
   parts.push(`Total: ${totalTokens}`);
 
   // 平均每会话
-  const avgTokens = formatTokens(stats.averageTokensPerSession);
+  const avgTokens = formatTokens(stats.averageTokensPerSession, { withUnit: true });
   parts.push(`Avg: ${avgTokens}/session`);
 
   // 最常用工具（如果有）
@@ -168,19 +169,6 @@ export function formatSessionStats(stats: SessionStats): string {
   }
 
   return parts.join(' | ');
-}
-
-/**
- * 格式化 token 数量
- */
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) {
-    return `${(n / 1_000_000).toFixed(1)}M tokens`;
-  }
-  if (n >= 1_000) {
-    return `${(n / 1_000).toFixed(0)}k tokens`;
-  }
-  return `${n} tokens`;
 }
 
 /**
@@ -224,17 +212,4 @@ export function getStatsSummary(): string {
   lines.push('');
 
   return lines.join('\n');
-}
-
-/**
- * 格式化时长
- */
-function formatDuration(ms: number): string {
-  const hours = Math.floor(ms / 3600000);
-  const mins = Math.floor((ms % 3600000) / 60000);
-
-  if (hours > 0) {
-    return `${hours}h ${mins}m`;
-  }
-  return `${mins}m`;
 }

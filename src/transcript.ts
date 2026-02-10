@@ -5,6 +5,9 @@
 import * as fs from 'node:fs';
 import * as readline from 'node:readline';
 import type { TranscriptData, ToolEntry, AgentEntry, TodoItem } from './types.js';
+import { createDebug } from './debug.js';
+
+const debug = createDebug('transcript');
 
 interface TranscriptEntry {
   timestamp?: string;
@@ -54,12 +57,12 @@ export async function parseTranscript(filePath: string): Promise<TranscriptData>
       try {
         const entry = JSON.parse(line) as TranscriptEntry;
         processEntry(entry, toolMap, agentMap, todoList, todoIdMap, result);
-      } catch {
-        // 跳过格式错误的行
+      } catch (error) {
+        debug('Failed to parse JSON line', error instanceof Error ? error.message : 'Unknown error');
       }
     }
-  } catch {
-    // 出错时返回部分结果
+  } catch (error) {
+    debug('Failed to read transcript file', error instanceof Error ? error.message : 'Unknown error');
   }
 
   // 只保留最近的项目

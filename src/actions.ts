@@ -10,13 +10,13 @@ import type { HudConfig } from './types.js';
 import { loadConfig, getConfigPath } from './config.js';
 import { getStatsSummary, clearSessionStats } from './session-stats.js';
 import { clearGitCache, getGitCacheStats } from './git.js';
-import {
-  createCanaryFile,
+import { createCanaryFile,
   clearCanaryFile,
   checkCanaryStatus,
   initGlobalCanary
 } from './canary-test.js';
 import { clearProjectMemory, getMemoryCacheStats } from './project-memory.js';
+import { getApiUsage } from './usage-api.js';
 
 // 缓存文件路径
 const CACHE_DIR = path.join(os.homedir(), '.claude', 'plugins', 'my-claude-hud');
@@ -190,6 +190,181 @@ function clearCache(): void {
 }
 
 /**
+ * 显示系统健康状态
+ */
+async function showHealth(): Promise<void> {
+  console.log('\n🏥 My Claude HUD 健康状态\n');
+
+  let allHealthy = true;
+
+  // 1. Git 状态
+  try {
+    const { execSync } = await import('node:child_process');
+    execSync('git --version', { stdio: 'ignore' });
+    console.log('✓ Git: 可用');
+  } catch {
+    console.log('✗ Git: 不可用');
+    allHealthy = false;
+  }
+
+  // 2. API 凭证状态
+  try {
+    const usageData = await getApiUsage();
+    if (usageData?.planName) {
+      console.log(`✓ API 凭证: OAuth (${usageData.planName} 计划)`);
+      if (usageData.apiUnavailable) {
+        console.log(`  ⚠ API 错误: ${usageData.apiError ?? 'Unknown'} (将重试)`);
+      } else {
+        console.log(`  使用量: 5小时 ${usageData.fiveHour ?? 0}%, 7天 ${usageData.sevenDay ?? 0}%`);
+      }
+    } else {
+      console.log('ℹ API 凭证: API 用户（无 OAuth）');
+    }
+  } catch {
+    console.log('✗ API 凭证: 无法检查');
+    allHealthy = false;
+  }
+
+  // 3. 缓存文件状态
+  const cacheFiles = [
+    { name: 'Git 缓存', path: GIT_CACHE_FILE },
+    { name: '项目记忆', path: MEMORY_CACHE_FILE },
+  ];
+
+  let cacheIssues = 0;
+  for (const cache of cacheFiles) {
+    if (fs.existsSync(cache.path)) {
+      try {
+        const stats = fs.statSync(cache.path);
+        const age = Date.now() - stats.mtime.getTime();
+        const ageMinutes = Math.floor(age / 60000);
+        console.log(`✓ ${cache.name}: 存在 (${ageMinutes} 分钟前更新)`);
+      } catch {
+        console.log(`⚠ ${cache.name}: 存在但无法读取`);
+        cacheIssues++;
+      }
+    } else {
+      console.log(`ℹ ${cache.name}: 不存在`);
+    }
+  }
+
+  if (cacheIssues > 0) {
+    allHealthy = false;
+  }
+
+  // 4. 配置文件状态
+  const configPath = getConfigPath();
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      console.log(`✓ 配置文件: 已加载 (布局: ${config.lineLayout ?? 'default'})`);
+    } catch {
+      console.log('✗ 配置文件: 存在但解析失败');
+      allHealthy = false;
+    }
+  } else {
+    console.log('ℹ 配置文件: 不存在（使用默认配置）');
+  }
+
+  // 总结
+  console.log('');
+  if (allHealthy) {
+    console.log('✓ 所有系统检查通过\n');
+  } else {
+    console.log('⚠ 发现一些问题，但不影响基本功能\n');
+  }
+}
+
+/**
+ * 验证配置文件
+ */
+async function validateConfig(): Promise<void> {
+  console.log('\n🔍 My Claude HUD 配置验证\n');
+
+  let hasErrors = false;
+  const warnings: string[] = [];
+
+  // 1. 检查全局配置文件
+  const configPath = getConfigPath();
+  if (fs.existsSync(configPath)) {
+    console.log('✓ 全局配置文件: 已加载');
+    try {
+      const content = fs.readFileSync(configPath, 'utf-8');
+      const config = JSON.parse(content);
+
+      // 验证布局模式
+      if (config.lineLayout && !['compact', 'expanded'].includes(config.lineLayout)) {
+        console.log(`  ✗ 无效的 lineLayout: "${config.lineLayout}" (必须是 "compact" 或 "expanded")`);
+        hasErrors = true;
+      }
+
+      // 验证嵌套对象
+      if (config.display && typeof config.display !== 'object') {
+        console.log('  ✗ display 必须是对象');
+        hasErrors = true;
+      }
+
+      if (config.gitStatus && typeof config.gitStatus !== 'object') {
+        console.log('  ✗ gitStatus 必须是对象');
+        hasErrors = true;
+      }
+
+      // 检查未知字段
+      const validFields = ['lineLayout', 'showSeparators', 'pathLevels', 'gitStatus', 'display', 'alerts', 'theme', 'i18n', 'memory', 'cache', 'canaryTest'];
+      const unknownFields = Object.keys(config).filter(key => !validFields.includes(key));
+      if (unknownFields.length > 0) {
+        console.log(`  ⚠ 未知字段: ${unknownFields.join(', ')}`);
+        warnings.push('未知配置字段');
+      }
+
+    } catch (error) {
+      console.log(`  ✗ JSON 解析失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      hasErrors = true;
+    }
+  } else {
+    console.log('ℹ 全局配置文件: 不存在（使用默认配置）');
+  }
+
+  // 2. 检查项目配置文件
+  const cwd = process.cwd();
+  const projectConfigPaths = [
+    path.join(cwd, '.claude-hud.json'),
+    path.join(cwd, '.claude-hud', 'config.json'),
+  ];
+
+  let foundProjectConfig = false;
+  for (const projectPath of projectConfigPaths) {
+    if (fs.existsSync(projectPath)) {
+      console.log(`✓ 项目配置文件: ${projectPath}`);
+      foundProjectConfig = true;
+      try {
+        const content = fs.readFileSync(projectPath, 'utf-8');
+        JSON.parse(content);
+        console.log('  ✓ 项目配置 JSON 格式有效');
+      } catch (error) {
+        console.log(`  ✗ JSON 解析失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        hasErrors = true;
+      }
+      break; // 只使用找到的第一个配置文件
+    }
+  }
+
+  if (!foundProjectConfig) {
+    console.log('ℹ 项目配置文件: 未找到');
+  }
+
+  // 3. 总结
+  console.log('');
+  if (hasErrors) {
+    console.log('✗ 配置验证失败：发现错误\n');
+  } else if (warnings.length > 0) {
+    console.log('⚠ 配置验证通过：发现警告\n');
+  } else {
+    console.log('✓ 配置验证通过：未发现问题\n');
+  }
+}
+
+/**
  * 显示帮助信息
  */
 function showHelp(): void {
@@ -203,6 +378,8 @@ function showHelp(): void {
   stats              显示统计信息
   clear-cache        清除所有缓存
   clear-memory       清除项目记忆缓存
+  health             显示系统健康状态
+  validate-config    验证配置文件
   canary-create      在当前项目创建金丝雀文件
   canary-clear       清除当前项目的金丝雀文件
   canary-check       检查当前项目的金丝雀状态
@@ -212,6 +389,8 @@ function showHelp(): void {
 示例:
   node dist/index.js --action=toggle-layout
   node dist/index.js --action=stats
+  node dist/index.js --action=health
+  node dist/index.js --action=validate-config
   node dist/index.js --action=clear-cache
   node dist/index.js --action=clear-memory
   node dist/index.js --action=canary-create
@@ -253,6 +432,16 @@ const ACTIONS: Record<string, Action> = {
         console.error(`✗ 清除项目记忆失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     },
+  },
+  health: {
+    name: '健康检查',
+    description: '显示系统健康状态',
+    handler: showHealth,
+  },
+  'validate-config': {
+    name: '配置验证',
+    description: '验证配置文件',
+    handler: validateConfig,
   },
   help: {
     name: '帮助',

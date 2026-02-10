@@ -9,6 +9,7 @@ import * as os from 'node:os';
 import * as https from 'node:https';
 import { execFileSync } from 'node:child_process';
 import type { UsageData } from './types.js';
+import { getCacheConfig } from './cache-config.js';
 
 // === 类型定义 ===
 
@@ -46,10 +47,18 @@ interface CacheFile {
 
 // === 常量 ===
 
-const CACHE_TTL_MS = 60_000; // 60 秒
-const CACHE_FAILURE_TTL_MS = 15_000; // 失败请求 15 秒
 const KEYCHAIN_TIMEOUT_MS = 5000;
-const KEYCHAIN_BACKOFF_MS = 60_000; // Keychain 失败退避 60 秒
+
+// 缓存配置（可通过 setUsageCacheConfig 更新）
+let cacheConfig = getCacheConfig();
+
+/**
+ * 设置缓存配置
+ * @param config - 用户配置（可选）
+ */
+export function setUsageCacheConfig(config?: import('./types.js').HudConfig): void {
+  cacheConfig = getCacheConfig(config);
+}
 
 // === 路径工具 ===
 
@@ -76,7 +85,7 @@ function readCache(homeDir: string, now: number): UsageData | null {
     const cache: CacheFile = JSON.parse(content);
 
     // 检查 TTL - 失败结果使用更短的 TTL
-    const ttl = cache.data.apiUnavailable ? CACHE_FAILURE_TTL_MS : CACHE_TTL_MS;
+    const ttl = cache.data.apiUnavailable ? cacheConfig.api.failureTtlMs : cacheConfig.api.ttlMs;
     if (now - cache.timestamp >= ttl) return null;
 
     // JSON.stringify 将 Date 转为 ISO 字符串，读取时需要转换回来
@@ -121,7 +130,7 @@ function isKeychainBackoff(homeDir: string, now: number): boolean {
     const backoffPath = getKeychainBackoffPath(homeDir);
     if (!fs.existsSync(backoffPath)) return false;
     const timestamp = parseInt(fs.readFileSync(backoffPath, 'utf-8'), 10);
-    return now - timestamp < KEYCHAIN_BACKOFF_MS;
+    return now - timestamp < cacheConfig.api.keychainBackoffMs;
   } catch {
     return false;
   }
