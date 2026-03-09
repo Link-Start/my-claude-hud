@@ -11,6 +11,9 @@ const debug = createDebug('transcript');
 
 interface TranscriptEntry {
   timestamp?: string;
+  type?: string;
+  slug?: string;
+  customTitle?: string;
   message?: {
     content?: ContentBlock[];
   };
@@ -44,6 +47,9 @@ export async function parseTranscript(filePath: string): Promise<TranscriptData>
   const todoList: TodoItem[] = [];
   const todoIdMap = new Map<string, number>();
 
+  let customTitle: string | undefined;
+  let latestSlug: string | undefined;
+
   try {
     const fileStream = fs.createReadStream(filePath);
     const rl = readline.createInterface({
@@ -56,6 +62,11 @@ export async function parseTranscript(filePath: string): Promise<TranscriptData>
 
       try {
         const entry = JSON.parse(line) as TranscriptEntry;
+        if (entry.type === 'custom-title' && typeof entry.customTitle === 'string') {
+          customTitle = entry.customTitle;
+        } else if (typeof entry.slug === 'string') {
+          latestSlug = entry.slug;
+        }
         processEntry(entry, toolMap, agentMap, todoList, todoIdMap, result);
       } catch (error) {
         debug('Failed to parse JSON line', error instanceof Error ? error.message : 'Unknown error');
@@ -69,6 +80,7 @@ export async function parseTranscript(filePath: string): Promise<TranscriptData>
   result.tools = Array.from(toolMap.values()).slice(-20);
   result.agents = Array.from(agentMap.values()).slice(-10);
   result.todos = todoList;
+  result.sessionName = customTitle ?? latestSlug;
 
   return result;
 }

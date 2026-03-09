@@ -369,7 +369,9 @@ function renderExpanded(ctx: RenderContext): string[] {
 export function render(ctx: RenderContext): void {
   const lineLayout = ctx.config?.lineLayout ?? 'expanded';
   const showSeparators = ctx.config?.showSeparators ?? false;
-  const headerLines = lineLayout === 'expanded' ? renderExpanded(ctx) : renderCompact(ctx);
+  const isMultiline = lineLayout === 'multiline';
+  // multiline 使用 expanded 的内容，其他保持原逻辑
+  const headerLines = (lineLayout === 'expanded' || isMultiline) ? renderExpanded(ctx) : renderCompact(ctx);
   const activityLines = collectActivityLines(ctx);
 
   const headerSegments: string[] = [];
@@ -387,6 +389,7 @@ export function render(ctx: RenderContext): void {
   }
 
   const segments: string[] = [...headerSegments];
+  // showSeparators 保持原行为（单行模式下用 --- 分隔）
   if (showSeparators && headerSegments.length > 0 && activitySegments.length > 0) {
     segments.push(dim('---'));
   }
@@ -396,13 +399,32 @@ export function render(ctx: RenderContext): void {
     return;
   }
 
-  // 将 HUD 保持在单行以避免 UI 中的可聚焦行
-  let line = segments.join(' | ');
+  // 获取终端宽度
   const maxWidth = getTerminalWidth();
-  if (maxWidth) {
-    line = truncateLine(line, maxWidth);
-  }
 
-  const outputLine = `${RESET}${line}${RESET}`.replace(/ /g, '\u00A0');
-  console.log(outputLine);
+  if (isMultiline) {
+    // multiline 模式：分行显示，每行一个区块
+    // 在 header 和 activity 之间添加分隔行
+    const headerCount = headerSegments.length;
+    for (let i = 0; i < segments.length; i++) {
+      // 在 header 和 activity 之间添加分隔线
+      if (i === headerCount && headerCount > 0 && activitySegments.length > 0) {
+        console.log(dim('─'.repeat(maxWidth || 40)));
+      }
+      let line = segments[i];
+      if (maxWidth) {
+        line = truncateLine(line, maxWidth);
+      }
+      const outputLine = `${RESET}${line}${RESET}`.replace(/ /g, '\u00A0');
+      console.log(outputLine);
+    }
+  } else {
+    // compact/expanded 模式：单行显示（和原版一样）
+    let line = segments.join(' | ');
+    if (maxWidth) {
+      line = truncateLine(line, maxWidth);
+    }
+    const outputLine = `${RESET}${line}${RESET}`.replace(/ /g, '\u00A0');
+    console.log(outputLine);
+  }
 }

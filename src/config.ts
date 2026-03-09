@@ -50,6 +50,8 @@ export const DEFAULT_CONFIG: HudConfig = {
     showMemoryInsights: true,
     memoryInsightsPosition: 'after',
     smartDisplay: true,
+    showSessionName: false,
+    showPerformance: false,
   },
   alerts: {
     enabled: true,
@@ -63,11 +65,34 @@ export const DEFAULT_CONFIG: HudConfig = {
   i18n: {
     customTranslationFile: undefined,
   },
+  update: {
+    enabled: true,
+    checkInterval: 24 * 60 * 60 * 1000, // 24 小时
+  },
   memory: {
     enabled: true,
     maxProjects: 100,
     maxFilesPerProject: 500,
     trackingEnabled: true,
+  },
+  canaryTest: {
+    enabled: true,
+    autoCreate: true,
+    checkInterval: 10,
+    showInCompact: false,
+    showInExpanded: true,
+    testMode: 'light',
+    enableHistory: true,
+    enableAlerts: true,
+    alertOnLost: true,
+    alertOnFrequentLost: true,
+    frequentLostThreshold: 3,
+    alertOnLongLost: true,
+    longLostThreshold: 60000,
+    enableAutoRecovery: true,
+    autoRecoveryThreshold: 5,
+    enableStats: true,
+    enableReport: false,
   },
 };
 
@@ -115,7 +140,7 @@ function validateAutocompactBuffer(value: unknown): value is AutocompactBufferMo
 }
 
 function validateContextValue(value: unknown): value is ContextValueMode {
-  return value === 'percent' || value === 'tokens';
+  return value === 'percent' || value === 'tokens' || value === 'remaining';
 }
 
 function validateToolDetailLevel(value: unknown): value is ToolDetailLevel {

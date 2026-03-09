@@ -5,6 +5,7 @@
  */
 
 import type { RenderContext } from '../types.js';
+import { getCanaryStats, getAlerts } from '../canary-test.js';
 import { yellow, red, green, cyan, dim, RESET } from './colors.js';
 
 /**
@@ -96,4 +97,74 @@ export function renderCanaryLine(ctx: RenderContext): string | null {
   }
 
   return `Canary: ${parts.join(' ')}${RESET}`;
+}
+
+/**
+ * 渲染金丝雀统计信息
+ */
+export function renderCanaryStats(ctx: RenderContext): string | null {
+  if (!ctx.config?.canaryTest?.enableStats) {
+    return null;
+  }
+
+  const stats = ctx.canaryData;
+  if (!stats || stats.status === 'none') {
+    return null;
+  }
+
+  // 显示统计信息
+  const canaryStats = getCanaryStats();
+  if (canaryStats.totalChecks === 0) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  parts.push(yellow('📊 Stats'));
+  parts.push(dim(`检查:${canaryStats.totalChecks}`));
+  parts.push(green(`✓${canaryStats.activeCount}`));
+  parts.push(red(`✗${canaryStats.lostCount}`));
+  parts.push(dim(`丢失率:${canaryStats.lossRate.toFixed(1)}%`));
+
+  return parts.join(' ');
+}
+
+/**
+ * 渲染金丝雀告警信息
+ */
+export function renderCanaryAlerts(ctx: RenderContext): string | null {
+  if (!ctx.config?.canaryTest?.enableAlerts) {
+    return null;
+  }
+
+  const alerts = getAlerts(5); // 最近 5 条告警
+  if (alerts.length === 0) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  parts.push(yellow('🔔 Alerts'));
+
+  const latestAlert = alerts[alerts.length - 1];
+  const timeAgo = getTimeAgo(latestAlert.timestamp);
+  parts.push(`${latestAlert.type === 'lost' ? red('⚠️') : latestAlert.type === 'recovery' ? green('✅') : yellow('💡')} ${timeAgo}`);
+
+  return parts.join(' ');
+}
+
+/**
+ * 获取时间差显示
+ */
+function getTimeAgo(timestamp: Date): string {
+  const now = Date.now();
+  const elapsed = now - timestamp.getTime();
+
+  if (elapsed < 60000) {
+    return '<1m';
+  } else if (elapsed < 3600000) {
+    return `${Math.floor(elapsed / 60000)}m`;
+  } else if (elapsed < 86400000) {
+    return `${Math.floor(elapsed / 3600000)}h`;
+  } else {
+    return `${Math.floor(elapsed / 86400000)}d`;
+  }
 }

@@ -6,6 +6,13 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import type {
+  CanaryHistoryEntry,
+  CanaryStats,
+  CanaryAlertType,
+  CanaryAlert,
+  CanaryTestMode
+} from './types.js';
 
 // 金丝雀测试状态
 export type CanaryStatus = 'none' | 'prompt' | 'active' | 'lost';
@@ -503,5 +510,400 @@ export function resetPromptCount(projectDir: string): void {
     fs.writeFileSync(PROMPT_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8');
   } catch (error) {
     // 忽略错误
+  }
+}
+
+// === 金丝雀增强功能 ===
+
+import * as os from 'os';
+
+// 增强功能的文件路径
+const HISTORY_FILE = path.join(os.homedir(), '.claude', 'plugins', 'my-claude-hud', '.canary-history.json');
+const STATS_FILE = path.join(os.homedir(), '.claude', 'plugins', 'my-claude-hud', '.canary-stats.json');
+const ALERTS_FILE = path.join(os.homedir(), '.claude', 'plugins', 'my-claude-hud', '.canary-alerts.json');
+const TEMPLATES_FILE = path.join(os.homedir(), '.claude', 'plugins', 'my-claude-hud', '.canary-templates.json');
+
+// 历史记录存储
+let historyCache: CanaryHistoryEntry[] = [];
+
+/**
+ * 记录金丝雀状态变更历史
+ */
+export function recordHistory(
+  projectDir: string,
+  status: CanaryStatus,
+  canaryId?: string,
+  source?: 'project' | 'global'
+): void {
+  try {
+    const entry: CanaryHistoryEntry = {
+      id: `hist_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+      timestamp: new Date(),
+      status,
+      canaryId,
+      source,
+      projectDir,
+    };
+
+    historyCache.push(entry);
+
+    // 限制历史记录数量（最多保存 1000 条）
+    if (historyCache.length > 1000) {
+      historyCache = historyCache.slice(-1000);
+    }
+
+    // 持久化到文件
+    persistHistory();
+  } catch (error) {
+    // 忽略历史记录失败
+  }
+}
+
+/**
+ * 持久化历史记录到文件
+ */
+function persistHistory(): void {
+  try {
+    const cacheDir = path.dirname(HISTORY_FILE);
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(historyCache, null, 2), 'utf-8');
+  } catch (error) {
+    // 忽略写入失败
+  }
+}
+
+/**
+ * 加载历史记录
+ */
+export function loadHistory(): CanaryHistoryEntry[] {
+  try {
+    if (!fs.existsSync(HISTORY_FILE)) {
+      return [];
+    }
+
+    const content = fs.readFileSync(HISTORY_FILE, 'utf-8');
+    const history = JSON.parse(content);
+
+    return history.map((h: any) => ({
+      ...h,
+      timestamp: new Date(h.timestamp),
+    }));
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * 获取金丝雀统计信息
+ */
+export function getCanaryStats(): CanaryStats {
+  try {
+    const history = loadHistory();
+    const stats: CanaryStats = {
+      totalChecks: history.length,
+      activeCount: 0,
+      lostCount: 0,
+      lossRate: 0,
+      avgDuration: 0,
+      totalLostTime: 0,
+      longestLostDuration: 0,
+      successRate: 0,
+    };
+
+    if (history.length === 0) {
+      return stats;
+    }
+
+    let totalDuration = 0;
+    let lostCount = 0;
+    let activeCount = 0;
+    let lostDurations: number[] = [];
+
+    for (let i = 0; i < history.length; i++) {
+      const entry = history[i];
+
+      if (entry.status === 'active') {
+        activeCount++;
+        stats.lastActiveTime = entry.timestamp;
+      } else if (entry.status === 'lost') {
+        lostCount++;
+        stats.lastLostTime = entry.timestamp;
+
+        if (entry.duration) {
+          lostDurations.push(entry.duration);
+          stats.totalLostTime += entry.duration;
+        }
+      }
+
+      if (entry.duration) {
+        totalDuration += entry.duration;
+      }
+    }
+
+    stats.activeCount = activeCount;
+    stats.lostCount = lostCount;
+    stats.lossRate = stats.totalChecks > 0 ? (lostCount / stats.totalChecks) * 100 : 0;
+    stats.successRate = stats.totalChecks > 0 ? (activeCount / stats.totalChecks) * 100 : 0;
+    stats.avgDuration = stats.totalChecks > 0 ? totalDuration / stats.totalChecks : 0;
+    stats.longestLostDuration = lostDurations.length > 0 ? Math.max(...lostDurations) : 0;
+
+    return stats;
+  } catch (error) {
+    return {
+      totalChecks: 0,
+      activeCount: 0,
+      lostCount: 0,
+      lossRate: 0,
+      avgDuration: 0,
+      totalLostTime: 0,
+      longestLostDuration: 0,
+      successRate: 0,
+    };
+  }
+}
+
+/**
+ * 发送金丝雀告警
+ */
+export function sendCanaryAlert(
+  type: CanaryAlertType,
+  canaryId?: string,
+  message?: string
+): void {
+  try {
+    const alert: CanaryAlert = {
+      id: `alert_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+      timestamp: new Date(),
+      type,
+      canaryId,
+      message: message || getDefaultAlertMessage(type),
+    };
+
+    // 在终端显示告警
+    console.error(`[Canary Alert] ${alert.message}`);
+
+    // 持久化告警记录
+    persistAlert(alert);
+  } catch (error) {
+    // 忽略告警失败
+  }
+}
+
+/**
+ * 获取默认告警消息
+ */
+function getDefaultAlertMessage(type: CanaryAlertType): string {
+  switch (type) {
+    case 'lost':
+      return '⚠️ 金丝雀丢失！AI 可能已经遗忘了上下文';
+    case 'frequent_lost':
+      return '⚠️ 金丝雀频繁丢失！上下文可能不稳定';
+    case 'long_lost':
+      return '⚠️ 金丝雀长时间丢失！建议重新创建';
+    case 'recovery':
+      return '✅ 金丝雀已恢复！AI 重新记住了上下文';
+    default:
+      return '⚠️ 金丝雀告警';
+  }
+}
+
+/**
+ * 持久化告警记录
+ */
+function persistAlert(alert: CanaryAlert): void {
+  try {
+    const cacheDir = path.dirname(ALERTS_FILE);
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    let alerts: CanaryAlert[] = [];
+    if (fs.existsSync(ALERTS_FILE)) {
+      const content = fs.readFileSync(ALERTS_FILE, 'utf-8');
+      alerts = JSON.parse(content);
+    }
+
+    alerts.push(alert);
+
+    // 限制告警数量（最多保存 100 条）
+    if (alerts.length > 100) {
+      alerts = alerts.slice(-100);
+    }
+
+    fs.writeFileSync(ALERTS_FILE, JSON.stringify(alerts, null, 2), 'utf-8');
+  } catch (error) {
+    // 忽略写入失败
+  }
+}
+
+/**
+ * 获取告警记录
+ */
+export function getAlerts(limit?: number): CanaryAlert[] {
+  try {
+    if (!fs.existsSync(ALERTS_FILE)) {
+      return [];
+    }
+
+    const content = fs.readFileSync(ALERTS_FILE, 'utf-8');
+    const alerts = JSON.parse(content);
+
+    return alerts.map((a: any) => ({
+      ...a,
+      timestamp: new Date(a.timestamp),
+    })).slice(-(limit ?? alerts.length));
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * 创建不同测试模式的金丝雀内容
+ */
+export function createCanaryContentByMode(
+  canaryId: string,
+  testMode: CanaryTestMode,
+  isGlobal: boolean = false
+): string {
+  const timestamp = new Date().toISOString();
+  const scope = isGlobal ? '全局' : '项目';
+
+  let content = '';
+  let description = '';
+  let markers = '';
+
+  switch (testMode) {
+    case 'light':
+      description = '轻量级金丝雀测试 - 最小化上下文占用';
+      markers = '金丝雀 ID';
+      break;
+
+    case 'medium':
+      description = '中等强度金丝雀测试 - 平衡准确性和上下文占用';
+      markers = '金丝雀 ID\n创建时间\n作用范围';
+      break;
+
+    case 'heavy':
+      description = '重度金丝雀测试 - 最大准确性，更多上下文标记';
+      markers = '金丝雀 ID\n创建时间\n作用范围\n测试模式\n重要性级别';
+      break;
+  }
+
+  content = `# ${scope}金丝雀测试标记 [${testMode}]
+
+${CANARY_MARKER_START}
+${markers}
+${CANARY_MARKER_END}
+
+## 说明
+
+${description}
+
+## 测试方法
+
+1. 当你看到这个文件时，说明这是一个金丝雀测试点
+2. AI 应该能够记住这个金丝雀 ID：\`${canaryId}\`
+3. 如果 AI 遗忘了这个 ID，说明上下文已经丢失
+4. HUD 会显示金丝雀测试的状态
+
+## 状态指示
+
+- 🐤 活跃：AI 仍然记得金丝雀
+- ⚠️ 丢失：AI 已经遗忘了金丝雀
+- 💡 提示：建议创建金丝雀文件以监控上下文状态
+`;
+
+  return content;
+}
+
+/**
+ * 自动恢复金丝雀
+ */
+export function autoRecoverCanary(projectDir: string): boolean {
+  try {
+    // 清除旧的金丝雀文件
+    clearCanaryFile(projectDir);
+
+    // 创建新的金丝雀文件
+    return createCanaryFile(projectDir);
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * 生成金丝雀历史报告
+ */
+export function generateHistoryReport(format: 'json' | 'markdown' = 'markdown'): string {
+  const history = loadHistory();
+  const stats = getCanaryStats();
+
+  if (format === 'json') {
+    return JSON.stringify({
+      generated: new Date().toISOString(),
+      history: history,
+      stats: stats,
+    }, null, 2);
+  }
+
+  // Markdown 格式
+  let report = '# 金丝雀测试历史报告\n\n';
+  report += `生成时间: ${new Date().toISOString()}\n\n`;
+
+  report += '## 统计信息\n\n';
+  report += `- 总检查次数: ${stats.totalChecks}\n`;
+  report += `- 活跃次数: ${stats.activeCount}\n`;
+  report += `- 丢失次数: ${stats.lostCount}\n`;
+  report += `- 丢失率: ${stats.lossRate.toFixed(2)}%\n`;
+  report += `- 成功率: ${stats.successRate.toFixed(2)}%\n`;
+  report += `- 平均持续时间: ${stats.avgDuration.toFixed(0)}ms\n`;
+  report += `- 总丢失时间: ${stats.totalLostTime.toFixed(0)}ms\n`;
+  report += `- 最长丢失持续时间: ${stats.longestLostDuration.toFixed(0)}ms\n\n`;
+
+  if (stats.lastActiveTime) {
+    report += `- 最后活跃时间: ${stats.lastActiveTime.toISOString()}\n`;
+  }
+  if (stats.lastLostTime) {
+    report += `- 最后丢失时间: ${stats.lastLostTime.toISOString()}\n`;
+  }
+
+  report += '\n## 最近历史记录\n\n';
+  const recentHistory = history.slice(-20);
+  for (const entry of recentHistory) {
+    const statusIcon = entry.status === 'active' ? '🐤' : entry.status === 'lost' ? '⚠️' : '💡';
+    report += `${statusIcon} ${entry.timestamp.toISOString()} - ${entry.status}`;
+    if (entry.canaryId) {
+      report += ` (${entry.canaryId.substring(7, 13)}...)`;
+    }
+    report += '\n';
+  }
+
+  return report;
+}
+
+/**
+ * 清除所有金丝雀数据
+ */
+export function clearAllCanaryData(): void {
+  try {
+    const files = [
+      HISTORY_FILE,
+      STATS_FILE,
+      ALERTS_FILE,
+      TEMPLATES_FILE,
+      CANARY_CACHE_FILE,
+      PROMPT_CACHE_FILE,
+    ];
+
+    for (const file of files) {
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+      }
+    }
+  } catch (error) {
+    // 忽略清除失败
   }
 }

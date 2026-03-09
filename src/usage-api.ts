@@ -7,6 +7,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as https from 'node:https';
+import * as net from 'node:net';
+import * as tls from 'node:tls';
 import { execFileSync } from 'node:child_process';
 import type { UsageData } from './types.js';
 import { getCacheConfig } from './cache-config.js';
@@ -45,9 +47,20 @@ interface CacheFile {
   timestamp: number;
 }
 
+interface CacheState {
+  data: UsageData;
+  timestamp: number;
+  isFresh: boolean;
+}
+
+type CacheLockStatus = 'acquired' | 'busy' | 'unsupported';
+
 // === 常量 ===
 
 const KEYCHAIN_TIMEOUT_MS = 5000;
+const CACHE_LOCK_STALE_MS = 30_000; // 锁文件 30 秒后过期
+const CACHE_LOCK_WAIT_MS = 2_000; // 等待新缓存的最长时间
+const CACHE_LOCK_POLL_MS = 50; // 轮询间隔
 
 // 缓存配置（可通过 setUsageCacheConfig 更新）
 let cacheConfig = getCacheConfig();
@@ -66,6 +79,10 @@ function getCachePath(homeDir: string): string {
   return path.join(homeDir, '.claude', 'plugins', 'my-claude-hud', '.usage-cache.json');
 }
 
+function getCacheLockPath(homeDir: string): string {
+  return path.join(homeDir, '.claude', 'plugins', 'my-claude-hud', '.usage-cache.lock');
+}
+
 function getKeychainBackoffPath(homeDir: string): string {
   return path.join(homeDir, '.claude', 'plugins', 'my-claude-hud', '.keychain-backoff');
 }
@@ -76,7 +93,7 @@ function getCredentialsPath(homeDir: string): string {
 
 // === 缓存管理 ===
 
-function readCache(homeDir: string, now: number): UsageData | null {
+function readCacheState(homeDir: string, now: number): CacheState | null {
   try {
     const cachePath = getCachePath(homeDir);
     if (!fs.existsSync(cachePath)) return null;
@@ -86,7 +103,7 @@ function readCache(homeDir: string, now: number): UsageData | null {
 
     // 检查 TTL - 失败结果使用更短的 TTL
     const ttl = cache.data.apiUnavailable ? cacheConfig.api.failureTtlMs : cacheConfig.api.ttlMs;
-    if (now - cache.timestamp >= ttl) return null;
+    const isFresh = now - cache.timestamp < ttl;
 
     // JSON.stringify 将 Date 转为 ISO 字符串，读取时需要转换回来
     const data = cache.data;
@@ -97,10 +114,15 @@ function readCache(homeDir: string, now: number): UsageData | null {
       data.sevenDayResetAt = new Date(data.sevenDayResetAt as unknown as string);
     }
 
-    return data;
+    return { data, timestamp: cache.timestamp, isFresh };
   } catch {
     return null;
   }
+}
+
+function readCache(homeDir: string, now: number): UsageData | null {
+  const cache = readCacheState(homeDir, now);
+  return cache?.isFresh ? cache.data : null;
 }
 
 function writeCache(homeDir: string, data: UsageData, timestamp: number): void {
@@ -117,6 +139,88 @@ function writeCache(homeDir: string, data: UsageData, timestamp: number): void {
   } catch {
     // 忽略缓存写入失败
   }
+}
+
+function readLockTimestamp(lockPath: string): number | null {
+  try {
+    if (!fs.existsSync(lockPath)) return null;
+    const raw = fs.readFileSync(lockPath, 'utf-8').trim();
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function tryAcquireCacheLock(homeDir: string): CacheLockStatus {
+  const lockPath = getCacheLockPath(homeDir);
+  const cacheDir = path.dirname(lockPath);
+
+  try {
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    const fd = fs.openSync(lockPath, 'wx');
+    try {
+      fs.writeFileSync(fd, String(Date.now()), 'utf-8');
+    } finally {
+      fs.closeSync(fd);
+    }
+    return 'acquired';
+  } catch (error) {
+    const maybeError = error as NodeJS.ErrnoException;
+    if (maybeError.code !== 'EEXIST') {
+      // 锁不可用，继续执行但不进行协调
+      return 'unsupported';
+    }
+  }
+
+  const lockTimestamp = readLockTimestamp(lockPath);
+  if (lockTimestamp != null && Date.now() - lockTimestamp > CACHE_LOCK_STALE_MS) {
+    // 锁已过期，尝试删除并重新获取
+    try {
+      fs.unlinkSync(lockPath);
+    } catch {
+      return 'busy';
+    }
+    return tryAcquireCacheLock(homeDir);
+  }
+
+  return 'busy';
+}
+
+function releaseCacheLock(homeDir: string): void {
+  try {
+    const lockPath = getCacheLockPath(homeDir);
+    if (fs.existsSync(lockPath)) {
+      fs.unlinkSync(lockPath);
+    }
+  } catch {
+    // 忽略锁清理失败
+  }
+}
+
+async function waitForFreshCache(
+  homeDir: string,
+  now: () => number,
+  timeoutMs: number = CACHE_LOCK_WAIT_MS
+): Promise<UsageData | null> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, CACHE_LOCK_POLL_MS));
+    const cached = readCache(homeDir, now());
+    if (cached) {
+      return cached;
+    }
+
+    if (!fs.existsSync(getCacheLockPath(homeDir))) {
+      break;
+    }
+  }
+
+  return readCache(homeDir, now());
 }
 
 // === Keychain 管理 ===
@@ -265,6 +369,25 @@ function readCredentials(
 // === 工具函数 ===
 
 /**
+ * 检查用户是否使用自定义 API 端点而非默认的 Anthropic API
+ * 当使用自定义 provider（如通过 cc-switch）时，OAuth usage API 不适用
+ */
+function isUsingCustomApiEndpoint(env: NodeJS.ProcessEnv = process.env): boolean {
+  const baseUrl = env.ANTHROPIC_BASE_URL?.trim() || env.ANTHROPIC_API_BASE_URL?.trim();
+
+  // 没有配置自定义端点 - 使用默认 Anthropic API
+  if (!baseUrl) {
+    return false;
+  }
+
+  try {
+    return new URL(baseUrl).origin !== 'https://api.anthropic.com';
+  } catch {
+    return true;
+  }
+}
+
+/**
  * 获取计划名称
  */
 function getPlanName(subscriptionType: string): string | null {
@@ -302,20 +425,158 @@ function parseDate(dateStr: string | undefined): Date | null {
 // === API 请求 ===
 
 /**
+ * 检查主机是否在 NO_PROXY 列表中
+ */
+function isNoProxy(hostname: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  const noProxy = env.NO_PROXY ?? env.no_proxy;
+  if (!noProxy) return false;
+
+  const host = hostname.toLowerCase();
+  return noProxy.split(',').some((entry) => {
+    const pattern = entry.trim().toLowerCase();
+    if (!pattern) return false;
+    if (pattern === '*') return true;
+    if (host === pattern) return true;
+    const suffix = pattern.startsWith('.') ? pattern : `.${pattern}`;
+    return host.endsWith(suffix);
+  });
+}
+
+/**
+ * 获取代理 URL
+ */
+function getProxyUrl(hostname: string, env: NodeJS.ProcessEnv = process.env): URL | null {
+  if (isNoProxy(hostname, env)) {
+    return null;
+  }
+
+  const proxyEnv = env.HTTPS_PROXY
+    ?? env.https_proxy
+    ?? env.ALL_PROXY
+    ?? env.all_proxy
+    ?? env.HTTP_PROXY
+    ?? env.http_proxy;
+  if (!proxyEnv) return null;
+
+  try {
+    const proxyUrl = new URL(proxyEnv);
+    if (proxyUrl.protocol !== 'http:' && proxyUrl.protocol !== 'https:') {
+      return null;
+    }
+    return proxyUrl;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 创建代理隧道 Agent
+ */
+function createProxyTunnelAgent(proxyUrl: URL): https.Agent {
+  const proxyHost = proxyUrl.hostname;
+  const proxyPort = Number.parseInt(proxyUrl.port || (proxyUrl.protocol === 'https:' ? '443' : '80'), 10);
+  const proxyAuth = proxyUrl.username
+    ? `Basic ${Buffer.from(
+      `${decodeURIComponent(proxyUrl.username)}:${decodeURIComponent(proxyUrl.password || '')}`
+    ).toString('base64')}`
+    : null;
+
+  return new class extends https.Agent {
+    override createConnection(
+      options: https.RequestOptions,
+      callback?: (err: Error | null, socket: net.Socket) => void
+    ): undefined {
+      const targetHost = String(options.host ?? options.hostname ?? 'localhost');
+      const targetPort = Number(options.port) || 443;
+
+      let settled = false;
+      const settle = (err: Error | null, socket: net.Socket): void => {
+        if (settled) return;
+        settled = true;
+        callback?.(err, socket);
+      };
+
+      const proxySocket = proxyUrl.protocol === 'https:'
+        ? tls.connect({ host: proxyHost, port: proxyPort, servername: proxyHost })
+        : net.connect(proxyPort, proxyHost);
+
+      proxySocket.once('error', (error) => {
+        settle(error, proxySocket);
+      });
+
+      proxySocket.once('connect', () => {
+        const connectHeaders = [
+          `CONNECT ${targetHost}:${targetPort} HTTP/1.1`,
+          `Host: ${targetHost}:${targetPort}`,
+        ];
+        if (proxyAuth) {
+          connectHeaders.push(`Proxy-Authorization: ${proxyAuth}`);
+        }
+        connectHeaders.push('', '');
+
+        proxySocket.write(connectHeaders.join('\r\n'));
+
+        let responseBuffer = Buffer.alloc(0);
+        const onData = (chunk: Buffer): void => {
+          responseBuffer = Buffer.concat([responseBuffer, chunk]);
+          const headerEndIndex = responseBuffer.indexOf('\r\n\r\n');
+          if (headerEndIndex === -1) return;
+
+          proxySocket.removeListener('data', onData);
+
+          const headerText = responseBuffer.subarray(0, headerEndIndex).toString('utf8');
+          const statusLine = headerText.split('\r\n')[0] ?? '';
+          if (!/^HTTP\/1\.[01] 200 /.test(statusLine)) {
+            const error = new Error(`Proxy CONNECT rejected: ${statusLine || 'unknown status'}`);
+            proxySocket.destroy(error);
+            settle(error, proxySocket);
+            return;
+          }
+
+          const tlsSocket = tls.connect({
+            socket: proxySocket,
+            servername: String(options.servername ?? targetHost),
+            rejectUnauthorized: options.rejectUnauthorized !== false,
+          }, () => {
+            settle(null, tlsSocket);
+          });
+
+          tlsSocket.once('error', (error) => {
+            settle(error, tlsSocket);
+          });
+        };
+
+        proxySocket.on('data', onData);
+      });
+
+      // 必须不返回 socket。在 Node.js _http_agent.js 中，createSocket()
+      // 调用：`if (newSocket) oncreate(null, newSocket)` — 返回 truthy 值
+      // 会导致 HTTP 请求在建立 CONNECT 隧道之前立即写入原始代理 socket。
+      // 只有在 CONNECT 握手成功后，才通过回调异步传递最终的 TLS socket。
+      return undefined;
+    }
+  }();
+}
+
+/**
  * 从 Anthropic API 获取 OAuth 使用量数据
  */
 function fetchUsageApi(accessToken: string): Promise<UsageApiResult> {
   return new Promise((resolve) => {
+    const host = 'api.anthropic.com';
+    const proxyUrl = getProxyUrl(host);
+
     const options = {
-      hostname: 'api.anthropic.com',
+      hostname: host,
       path: '/api/oauth/usage',
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'anthropic-beta': 'oauth-2025-04-20',
-        'User-Agent': 'my-claude-hud/1.0',
+        'User-Agent': 'claude-code/2.1',
       },
       timeout: 5000,
+      agent: proxyUrl ? createProxyTunnelAgent(proxyUrl) : undefined,
     };
 
     const req = https.request(options, (res) => {
@@ -361,18 +622,42 @@ function fetchUsageApi(accessToken: string): Promise<UsageApiResult> {
  *
  * 使用基于文件的缓存，因为 HUD 每次渲染都作为新进程运行（约 300ms）
  * 缓存 TTL：成功 60 秒，失败 15 秒
+ * 使用文件锁机制防止多个并发 HUD 进程同时刷新缓存
  */
 export async function getApiUsage(): Promise<UsageData | null> {
   const now = Date.now();
   const homeDir = os.homedir();
 
-  // 首先检查文件缓存
-  const cached = readCache(homeDir, now);
-  if (cached) {
-    return cached;
+  // 如果用户使用自定义 provider，跳过 usage API
+  if (isUsingCustomApiEndpoint()) {
+    return null;
   }
 
+  // 检查文件缓存状态
+  const cacheState = readCacheState(homeDir, now);
+  if (cacheState?.isFresh) {
+    return cacheState.data;
+  }
+
+  // 尝试获取缓存锁
+  let holdsCacheLock = false;
+  const lockStatus = tryAcquireCacheLock(homeDir);
+  if (lockStatus === 'busy') {
+    // 锁被占用，如果有缓存就返回旧缓存，否则等待新缓存
+    if (cacheState) {
+      return cacheState.data;
+    }
+    return await waitForFreshCache(homeDir, () => Date.now());
+  }
+  holdsCacheLock = lockStatus === 'acquired';
+
   try {
+    // 再次检查缓存，可能在等待期间已被其他进程更新
+    const refreshedCache = readCache(homeDir, Date.now());
+    if (refreshedCache) {
+      return refreshedCache;
+    }
+
     const credentials = readCredentials(homeDir, now, readKeychainCredentials);
     if (!credentials) {
       return null;
@@ -425,6 +710,10 @@ export async function getApiUsage(): Promise<UsageData | null> {
     return result;
   } catch {
     return null;
+  } finally {
+    if (holdsCacheLock) {
+      releaseCacheLock(homeDir);
+    }
   }
 }
 

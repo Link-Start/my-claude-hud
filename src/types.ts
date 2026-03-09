@@ -4,9 +4,9 @@
  */
 
 // 类型定义
-export type LineLayoutType = 'compact' | 'expanded';
+export type LineLayoutType = 'compact' | 'expanded' | 'multiline';
 export type AutocompactBufferMode = 'enabled' | 'disabled';
-export type ContextValueMode = 'percent' | 'tokens';
+export type ContextValueMode = 'percent' | 'tokens' | 'remaining';
 export type DisplayLanguage = 'zh' | 'en';
 export type ToolDetailLevel = 'compact' | 'semantic' | 'directory';
 export type MemoryInsightsPosition = 'before' | 'after' | 'inline';
@@ -67,6 +67,7 @@ export interface TranscriptData {
   agents: AgentEntry[];
   todos: TodoItem[];
   sessionStart?: Date;
+  sessionName?: string;
 }
 
 // Git 文件统计
@@ -141,6 +142,10 @@ export interface HudConfig {
     memoryInsightsPosition?: MemoryInsightsPosition;
     // 智能显示模式
     smartDisplay?: boolean;
+    // Session Name 显示
+    showSessionName?: boolean;
+    // 性能监控显示
+    showPerformance?: boolean;
   };
   alerts: {
     enabled: boolean;
@@ -161,11 +166,24 @@ export interface HudConfig {
     enabled?: boolean;
     autoCreate?: boolean;
     checkInterval?: number;
-    showInCompact?: boolean; // 是否在紧凑模式下显示
-    showInExpanded?: boolean; // 是否在展开模式下显示
+    showInCompact?: boolean;
+    showInExpanded?: boolean;
+    // 增强功能配置
+    testMode?: CanaryTestMode;
+    enableHistory?: boolean;
+    enableAlerts?: boolean;
+    alertOnLost?: boolean;
+    alertOnFrequentLost?: boolean;
+    frequentLostThreshold?: number;
+    alertOnLongLost?: boolean;
+    longLostThreshold?: number;
+    enableAutoRecovery?: boolean;
+    autoRecoveryThreshold?: number;
+    enableStats?: boolean;
+    enableReport?: boolean;
   };
   memory?: {
-    // 记忆系统配置
+    // 项目记忆配置
     enabled?: boolean;
     maxProjects?: number;
     maxFilesPerProject?: number;
@@ -186,6 +204,11 @@ export interface HudConfig {
       ttlMs?: number;
       updateIntervalMs?: number;
     };
+  };
+  update?: {
+    // 更新检查配置
+    enabled?: boolean;
+    checkInterval?: number;
   };
 }
 
@@ -254,4 +277,133 @@ export interface RenderContext {
   config: HudConfig;
   extraLabel: string | null;
   canaryData?: CanaryData; // 金丝雀测试数据
+}
+
+// === 金丝雀测试增强功能类型 ===
+
+/**
+ * 金丝雀测试模式
+ */
+export type CanaryTestMode = 'light' | 'medium' | 'heavy';
+
+/**
+ * 金丝雀历史记录条目
+ */
+export interface CanaryHistoryEntry {
+  id: string;
+  timestamp: Date;
+  status: CanaryStatus;
+  canaryId?: string;
+  source?: 'project' | 'global';
+  duration?: number; // 持续时间（毫秒）
+  projectDir?: string;
+}
+
+/**
+ * 金丝雀统计信息
+ */
+export interface CanaryStats {
+  totalChecks: number;
+  activeCount: number;
+  lostCount: number;
+  lossRate: number; // 丢失率（百分比）
+  avgDuration: number; // 平均持续时间（毫秒）
+  totalLostTime: number; // 总丢失时间（毫秒）
+  longestLostDuration: number; // 最长丢失持续时间（毫秒）
+  lastActiveTime?: Date;
+  lastLostTime?: Date;
+  successRate: number; // 成功率（百分比）
+}
+
+/**
+ * 金丝雀告警类型
+ */
+export type CanaryAlertType = 'lost' | 'frequent_lost' | 'long_lost' | 'recovery';
+
+/**
+ * 金丝雀告警配置
+ */
+export interface CanaryAlertConfig {
+  enabled: boolean;
+  alertOnLost: boolean;
+  alertOnFrequentLost: boolean;
+  frequentLostThreshold: number; // 频繁丢失阈值（次数）
+  alertOnLongLost: boolean;
+  longLostThreshold: number; // 长时间丢失阈值（毫秒）
+  alertOnRecovery: boolean;
+  alertMethods: ('terminal' | 'log')[];
+}
+
+/**
+ * 金丝雀告警
+ */
+export interface CanaryAlert {
+  id: string;
+  timestamp: Date;
+  type: CanaryAlertType;
+  canaryId?: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+/**
+ * 金丝雀模板类型
+ */
+export type CanaryTemplateType = 'default' | 'minimal' | 'detailed' | 'custom';
+
+/**
+ * 金丝雀模板
+ */
+export interface CanaryTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: CanaryTemplateType;
+  testMode: CanaryTestMode;
+  content: string;
+  created: Date;
+  modified: Date;
+}
+
+/**
+ * 金丝雀自动恢复配置
+ */
+export interface CanaryAutoRecoveryConfig {
+  enabled: boolean;
+  autoRecreate: boolean;
+  autoRestoreThreshold: number; // 自动恢复阈值（丢失次数）
+  maxRecoveryAttempts: number; // 最大恢复尝试次数
+  recoveryStrategy: 'immediate' | 'delayed' | 'manual';
+  recoveryDelay: number; // 恢复延迟（毫秒）
+}
+
+/**
+ * 金丝雀报告配置
+ */
+export interface CanaryReportConfig {
+  enabled: boolean;
+  format: 'json' | 'markdown' | 'both';
+  includeHistory: boolean;
+  includeStats: boolean;
+  includeAlerts: boolean;
+  maxHistoryEntries: number;
+  reportInterval: number; // 报告生成间隔（毫秒）
+}
+
+/**
+ * 金丝雀报告
+ */
+export interface CanaryReport {
+  generated: Date;
+  projectDir: string;
+  canaryId?: string;
+  status: CanaryStatus;
+  history: CanaryHistoryEntry[];
+  stats: CanaryStats;
+  alerts: CanaryAlert[];
+  config: {
+    history: boolean;
+    stats: boolean;
+    alerts: boolean;
+  };
 }

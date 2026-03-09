@@ -105,6 +105,11 @@ export function renderSessionLine(ctx: RenderContext): string {
     parts.push(`${yellow(projectPath)}${gitPart}`);
   }
 
+  // Session Name 显示
+  if (display?.showSessionName && ctx.transcript.sessionName) {
+    parts.push(dim(ctx.transcript.sessionName));
+  }
+
   // 配置统计（ respects environmentThreshold）
   if (display?.showConfigCounts !== false) {
     const totalCounts = ctx.claudeMdCount + ctx.rulesCount + ctx.mcpCount + ctx.hooksCount;
@@ -244,7 +249,7 @@ export function renderSessionLine(ctx: RenderContext): string {
   return line;
 }
 
-function formatContextValue(ctx: RenderContext, percent: number, mode: 'percent' | 'tokens'): string {
+function formatContextValue(ctx: RenderContext, percent: number, mode: 'percent' | 'tokens' | 'remaining'): string {
   if (mode === 'tokens') {
     const totalTokens = getTotalTokens(ctx.stdin);
     const size = ctx.stdin.context_window?.context_window_size ?? 0;
@@ -252,6 +257,10 @@ function formatContextValue(ctx: RenderContext, percent: number, mode: 'percent'
       return `${formatTokens(totalTokens)}/${formatTokens(size)}`;
     }
     return formatTokens(totalTokens);
+  }
+
+  if (mode === 'remaining') {
+    return `${Math.max(0, 100 - percent)}%`;
   }
 
   return `${percent}%`;
