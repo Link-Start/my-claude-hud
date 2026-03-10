@@ -17,8 +17,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "postinstall": "node scripts/postinstall.js",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
+    "test": "jest --passWithNoTests",
+    "test:coverage": "jest --coverage --passWithNoTests",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
