@@ -146,6 +146,10 @@ export interface HudConfig {
     showSessionName?: boolean;
     // 性能监控显示
     showPerformance?: boolean;
+    // 推理努力显示
+    showReasoningEffort?: boolean;
+    // 思考时间显示
+    showThinkTime?: boolean;
   };
   alerts: {
     enabled: boolean;

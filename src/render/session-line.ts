@@ -12,6 +12,8 @@ import { projectContextUsage, formatProjection } from '../context-projection.js'
 import { checkAlerts, formatAlerts } from '../alerts.js';
 import { coloredBar, cyan, dim, magenta, red, yellow, getContextColor, quotaBar, RESET } from './colors.js';
 import { formatTokens, formatTimeUntil } from '../utils/format.js';
+import { estimateReasoningEffort, formatReasoningEffort, getReasoningEffortIcon, getReasoningEffortLabel } from '../reasoning-effort.js';
+import { trackThinkTime, formatThinkTime } from '../think-time.js';
 
 const DEBUG = process.env.DEBUG?.includes('my-claude-hud') || process.env.DEBUG === '*';
 
@@ -190,6 +192,24 @@ export function renderSessionLine(ctx: RenderContext): string {
 
   if (display?.showDuration !== false && ctx.sessionDuration) {
     parts.push(dim(`⏱️  ${ctx.sessionDuration}`));
+  }
+
+  // 推理努力显示（基于会话活动推测）
+  if (display?.showReasoningEffort !== false) {
+    const reasoningEffort = estimateReasoningEffort(ctx);
+    const effortDisplay = formatReasoningEffort(ctx);
+    if (effortDisplay) {
+      parts.push(dim(effortDisplay));
+    }
+  }
+
+  // 思考时间显示（UI刷新间隔）
+  if (display?.showThinkTime !== false) {
+    const thinkTime = trackThinkTime();
+    if (thinkTime > 0) {
+      const formattedThinkTime = formatThinkTime(thinkTime);
+      parts.push(dim(`⏳ ${formattedThinkTime}`));
+    }
   }
 
   // 成本显示（可选功能）

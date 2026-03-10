@@ -1,0 +1,57 @@
+name: 定价更新
+
+on:
+  # 每月 1 号自动运行
+  schedule:
+    - cron: '0 0 1 * *'
+  # 支持手动触发
+  workflow_dispatch:
+  # 代码变更时也可以触发（可选）
+  push:
+    paths:
+      - '.github/workflows/update-pricing.yml'
+      - 'scripts/update-pricing.js'
+
+jobs:
+  check-pricing:
+    name: 检查 Claude API 定价
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 🟢 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      
+      - name: 📦 安装依赖
+        run: npm ci
+      
+      - name: 🔍 检查定价是否有更新
+        id: check
+        run: |
+          node scripts/update-pricing.cjs --check-only
+        continue-on-error: true
+      
+      - name: 📝 创建 Pull Request（如果有更新）
+        if: steps.check.outcome == 'failure'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: 更新 Claude API 定价'
+          title: 'chore: 更新 Claude API 定价'
+          body: |
+            ## 更新内容
+            自动检测到 Claude API 定价已更新，已更新 `src/cost-estimator.ts` 中的定价数据。
+            
+            > 此 PR 由 GitHub Actions 自动创建
+            
+            <!-- auto-pr -->
+          branch: chore/update-pricing
+          delete-branch: true
+      
+      - name: 💬 定价已是最新
+        if: steps.check.outcome == 'success'
+        run: echo "✅ 定价已是最新，无需更新"

@@ -12,10 +12,28 @@ interface ModelPricing {
   outputPricePer1k: number; // 每 1k output tokens 价格（美元）
 }
 
-// 定价数据（2024年价格）
+// 定价数据（2026年最新定价）
 const PRICING: Record<string, ModelPricing> = {
-  // Claude 3.5 Sonnet (claude-sonnet-4-20250514)
-  'claude-sonnet-4-20250514': {
+  // Claude 4.6 系列 (2026年最新)
+  'claude-opus-4-6-20251120': {
+    inputPricePer1k: 0.005,
+    outputPricePer1k: 0.025,
+  },
+  'claude-opus-4-6': {
+    inputPricePer1k: 0.005,
+    outputPricePer1k: 0.025,
+  },
+  'claude-opus-4': {
+    inputPricePer1k: 0.005,
+    outputPricePer1k: 0.025,
+  },
+
+  // Claude Sonnet 4.6 (2026年最新)
+  'claude-sonnet-4-6-20251120': {
+    inputPricePer1k: 0.003,
+    outputPricePer1k: 0.015,
+  },
+  'claude-sonnet-4-6': {
     inputPricePer1k: 0.003,
     outputPricePer1k: 0.015,
   },
@@ -24,33 +42,31 @@ const PRICING: Record<string, ModelPricing> = {
     outputPricePer1k: 0.015,
   },
 
-  // Claude 3.5 Sonnet (claude-sonnet-4-20250514)
-  'claude-sonnet-4-20250514:thinking': {
+  // Claude 4.5 系列
+  'claude-opus-4-5-20250514': {
+    inputPricePer1k: 0.005,
+    outputPricePer1k: 0.025,
+  },
+  'claude-sonnet-4-5-20250514': {
     inputPricePer1k: 0.003,
     outputPricePer1k: 0.015,
   },
 
-  // Claude 3 Opus (claude-opus-4-20250514)
-  'claude-opus-4-20250514': {
-    inputPricePer1k: 0.015,
-    outputPricePer1k: 0.075,
+  // Claude Haiku 4.5 (2026年最新)
+  'claude-haiku-4-5-20250514': {
+    inputPricePer1k: 0.001,
+    outputPricePer1k: 0.005,
   },
-  'claude-opus-4': {
-    inputPricePer1k: 0.015,
-    outputPricePer1k: 0.075,
-  },
-
-  // Claude 3 Haiku (claude-haiku-4-20250514)
-  'claude-haiku-4-20250514': {
-    inputPricePer1k: 0.0008,
-    outputPricePer1k: 0.004,
+  'claude-haiku-4-5': {
+    inputPricePer1k: 0.001,
+    outputPricePer1k: 0.005,
   },
   'claude-haiku-4': {
-    inputPricePer1k: 0.0008,
-    outputPricePer1k: 0.004,
+    inputPricePer1k: 0.001,
+    outputPricePer1k: 0.005,
   },
 
-  // Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)
+  // Claude 3.5 系列 (旧版，仍保留)
   'claude-3-5-sonnet-20241022': {
     inputPricePer1k: 0.003,
     outputPricePer1k: 0.015,
@@ -59,8 +75,6 @@ const PRICING: Record<string, ModelPricing> = {
     inputPricePer1k: 0.003,
     outputPricePer1k: 0.015,
   },
-
-  // Claude 3.5 Haiku (claude-3-5-haiku-20250514)
   'claude-3-5-haiku-20250514': {
     inputPricePer1k: 0.0008,
     outputPricePer1k: 0.004,
@@ -92,15 +106,29 @@ function getModelPricing(modelId: string): ModelPricing | null {
     return PRICING[modelId];
   }
 
-  // 模糊匹配（处理版本号后缀）
-  for (const [key, pricing] of Object.entries(PRICING)) {
-    if (modelId.startsWith(key.split('-')[0])) {
-      return pricing;
+  // 模糊匹配：优先匹配更长（更具体）的版本号
+  const sortedKeys = Object.keys(PRICING).sort((a, b) => b.length - a.length);
+  
+  for (const key of sortedKeys) {
+    if (modelId.includes(key) || key.includes(modelId)) {
+      return PRICING[key];
     }
   }
 
-  // 默认使用 Sonnet 定价
-  return PRICING['claude-sonnet-4'];
+  // 根据模型系列名匹配
+  const modelLower = modelId.toLowerCase();
+  if (modelLower.includes('opus')) {
+    return PRICING['claude-opus-4-6'];
+  }
+  if (modelLower.includes('sonnet')) {
+    return PRICING['claude-sonnet-4-6'];
+  }
+  if (modelLower.includes('haiku')) {
+    return PRICING['claude-haiku-4-5'];
+  }
+
+  // 默认使用 Claude Sonnet 4.6 定价（2026年最新默认）
+  return PRICING['claude-sonnet-4-6'];
 }
 
 /**
@@ -129,7 +157,7 @@ export function calculateCostFromStdin(stdin: StdinInput): number {
 
   const inputTokens = usage.input_tokens ?? 0;
   const outputTokens = usage.output_tokens ?? 0;
-  const modelId = stdin.model?.id ?? 'claude-sonnet-4';
+  const modelId = stdin.model?.id ?? 'claude-sonnet-4-6';
 
   return calculateCost(inputTokens, outputTokens, modelId);
 }

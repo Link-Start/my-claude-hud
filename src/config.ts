@@ -52,6 +52,8 @@ export const DEFAULT_CONFIG: HudConfig = {
     smartDisplay: true,
     showSessionName: false,
     showPerformance: false,
+    showReasoningEffort: true,
+    showThinkTime: true,
   },
   alerts: {
     enabled: true,
@@ -254,6 +256,10 @@ function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
       ? migrated.display!.memoryInsightsPosition!
       : DEFAULT_CONFIG.display.memoryInsightsPosition ?? 'after',
     smartDisplay: getDisplayValue(migrated.display, 'smartDisplay', DEFAULT_CONFIG.display.smartDisplay ?? false),
+    showSessionName: getDisplayValue(migrated.display, 'showSessionName', DEFAULT_CONFIG.display.showSessionName ?? false),
+    showPerformance: getDisplayValue(migrated.display, 'showPerformance', DEFAULT_CONFIG.display.showPerformance ?? false),
+    showReasoningEffort: getDisplayValue(migrated.display, 'showReasoningEffort', DEFAULT_CONFIG.display.showReasoningEffort ?? true),
+    showThinkTime: getDisplayValue(migrated.display, 'showThinkTime', DEFAULT_CONFIG.display.showThinkTime ?? true),
   };
 
   const alerts = {
