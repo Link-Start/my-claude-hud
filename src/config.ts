@@ -54,6 +54,8 @@ export const DEFAULT_CONFIG: HudConfig = {
     showPerformance: false,
     showReasoningEffort: true,
     showThinkTime: true,
+    showRalphLoop: true,
+    separatorStyle: 'default',
   },
   alerts: {
     enabled: true,
@@ -260,6 +262,8 @@ function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
     showPerformance: getDisplayValue(migrated.display, 'showPerformance', DEFAULT_CONFIG.display.showPerformance ?? false),
     showReasoningEffort: getDisplayValue(migrated.display, 'showReasoningEffort', DEFAULT_CONFIG.display.showReasoningEffort ?? true),
     showThinkTime: getDisplayValue(migrated.display, 'showThinkTime', DEFAULT_CONFIG.display.showThinkTime ?? true),
+    showRalphLoop: getDisplayValue(migrated.display, 'showRalphLoop', DEFAULT_CONFIG.display.showRalphLoop ?? true),
+    separatorStyle: getDisplayValue(migrated.display, 'separatorStyle', DEFAULT_CONFIG.display.separatorStyle ?? 'default'),
   };
 
   const alerts = {

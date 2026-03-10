@@ -272,11 +272,16 @@ function renderExpanded(ctx: RenderContext): string[] {
       }
 
       if (gitConfig?.showAheadBehind) {
-        if (ctx.gitStatus.ahead > 0) {
-          gitParts.push(` ↑${ctx.gitStatus.ahead}`);
-        }
-        if (ctx.gitStatus.behind > 0) {
-          gitParts.push(` ↓${ctx.gitStatus.behind}`);
+        // Diverged 状态：同时 ahead 和 behind
+        if (ctx.gitStatus.diverged) {
+          gitParts.push(` ⇕${ctx.gitStatus.ahead}↓${ctx.gitStatus.behind}`);
+        } else {
+          if (ctx.gitStatus.ahead > 0) {
+            gitParts.push(` ↑${ctx.gitStatus.ahead}`);
+          }
+          if (ctx.gitStatus.behind > 0) {
+            gitParts.push(` ↓${ctx.gitStatus.behind}`);
+          }
         }
       }
 

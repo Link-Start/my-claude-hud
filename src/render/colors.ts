@@ -159,3 +159,53 @@ export function quotaBar(percent: number, width: number = 10): string {
   const color = getQuotaColor(safePercent);
   return `${color}${'█'.repeat(filled)}${colors.dim}${'░'.repeat(empty)}${colors.reset}`;
 }
+
+// 分隔符样式类型
+export type SeparatorStyle = 'default' | 'powerline' | 'arrow';
+
+/**
+ * 获取分隔符字符
+ * @param style 分隔符样式
+ * @param position 'left' | 'right' - 左/右分隔符
+ * @returns 分隔符字符串
+ */
+export function getSeparator(style: SeparatorStyle, position: 'left' | 'right'): string {
+  const separators: Record<SeparatorStyle, { left: string; right: string }> = {
+    default: { left: ' ', right: ' ' },
+    powerline: {
+      left: ' \uE0B0',  // 三角形右箭头
+      right: '\uE0B1 ', // 三角形左箭头
+    },
+    arrow: {
+      left: ' \u27A4',  // 右箭头
+      right: '\u27A2 ', // 左箭头
+    },
+  };
+  return separators[style]?.[position] ?? ' ';
+}
+
+/**
+ * 渲染带分隔符的文本段
+ * @param text 文本内容
+ * @param style 分隔符样式
+ * @param isFirst 是否第一个段
+ * @param isLast 是否最后一个段
+ * @returns 渲染后的字符串
+ */
+export function renderSegment(
+  text: string,
+  style: SeparatorStyle,
+  isFirst: boolean = false,
+  isLast: boolean = false
+): string {
+  if (!text) return '';
+  
+  if (style === 'default') {
+    return text;
+  }
+  
+  const leftSep = isFirst ? '' : getSeparator(style, 'left');
+  const rightSep = isLast ? '' : getSeparator(style, 'right');
+  
+  return `${leftSep}${text}${rightSep}`;
+}

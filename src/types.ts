@@ -84,6 +84,7 @@ export interface GitInfo {
   isDirty: boolean;
   ahead: number;
   behind: number;
+  diverged: boolean;  // 同时 ahead 和 behind (分叉状态)
   fileStats?: FileStats;
 }
 
@@ -150,6 +151,10 @@ export interface HudConfig {
     showReasoningEffort?: boolean;
     // 思考时间显示
     showThinkTime?: boolean;
+    // Ralph Wiggum 循环状态显示
+    showRalphLoop?: boolean;
+    // 分隔符样式 (default: 无分隔符, powerline: _powerline 风格, arrow: 箭头风格)
+    separatorStyle?: 'default' | 'powerline' | 'arrow';
   };
   alerts: {
     enabled: boolean;

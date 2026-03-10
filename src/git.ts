@@ -21,6 +21,7 @@ interface GitCacheData {
   isDirty: boolean;           // 是否有未提交更改
   ahead: number;              // 领先提交数
   behind: number;             // 落后提交数
+  diverged: boolean;          // 分叉状态
   fileStats: FileStats;       // 文件统计
   timestamp: number;          // 缓存时间戳
 }
@@ -162,6 +163,7 @@ function getFromCache(repoKey: string): GitInfo | null {
     isDirty: data.isDirty,
     ahead: data.ahead,
     behind: data.behind,
+    diverged: data.diverged,
     fileStats: data.fileStats,
   };
 }
@@ -190,6 +192,7 @@ function saveToCache(repoKey: string, gitInfo: GitInfo, repoPath: string): void 
     isDirty: gitInfo.isDirty,
     ahead: gitInfo.ahead,
     behind: gitInfo.behind,
+    diverged: gitInfo.diverged,
     fileStats: gitInfo.fileStats ?? { modified: 0, added: 0, deleted: 0, untracked: 0 },
     timestamp: now,
   };
@@ -274,12 +277,16 @@ function parseGitStatusOutput(output: string): GitInfo | null {
   // 解析文件状态
   const fileStats = parseFileStatusLines(lines.slice(1));
   const isDirty = fileStats.modified > 0 || fileStats.added > 0 || fileStats.deleted > 0 || fileStats.untracked > 0;
+  
+  // Diverged 状态：同时 ahead 和 behind
+  const diverged = ahead > 0 && behind > 0;
 
   return {
     branch,
     isDirty,
     ahead,
     behind,
+    diverged,
     fileStats,
   };
 }
@@ -366,8 +373,13 @@ export function formatGitStatus(git: GitInfo, showDirty: boolean, showAheadBehin
   }
 
   if (showAheadBehind) {
-    if (git.ahead > 0) details.push(`↑${git.ahead}`);
-    if (git.behind > 0) details.push(`↓${git.behind}`);
+    // Diverged 状态：同时 ahead 和 behind
+    if (git.diverged) {
+      details.push(`⇕${git.ahead}↓${git.behind}`);
+    } else {
+      if (git.ahead > 0) details.push(`↑${git.ahead}`);
+      if (git.behind > 0) details.push(`↓${git.behind}`);
+    }
   }
 
   if (showDirty && git.isDirty && details.length === 0) {
